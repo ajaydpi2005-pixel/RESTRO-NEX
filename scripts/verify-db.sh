@@ -50,3 +50,6 @@ $PSQL -f scripts/local-pg/assertions.sql
 
 echo "→ Running outlet-access assertions (Phase 2)"
 $PSQL -f scripts/local-pg/assertions-phase2.sql
+
+echo "→ Running security test matrix (Phase 2)"
+$PSQL -f scripts/local-pg/security-matrix.sql

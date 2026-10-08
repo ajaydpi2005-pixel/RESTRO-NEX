@@ -94,6 +94,17 @@ describe("supabase migrations", () => {
     expect(sql).toContain("membership_outlets_select_member");
     expect(sql).not.toMatch(/on public\.membership_outlets for (insert|update|delete)/);
   });
+
+  it("freezes membership identity fields against forged updates", () => {
+    const sql = all();
+    expect(sql).toContain("function public.memberships_protect_identity");
+    expect(sql).toContain("before update on public.memberships");
+    expect(sql).toContain("errcode = '42501'");
+    // user_id, business_id and role must all be protected
+    expect(sql).toContain("new.business_id is distinct from old.business_id");
+    expect(sql).toContain("new.role is distinct from old.role");
+    expect(sql).toContain("new.user_id is distinct from old.user_id");
+  });
 });
 
 describe("development seed", () => {

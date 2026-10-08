@@ -56,13 +56,25 @@ ones, so callers cannot probe which tenants exist.
 policy evaluation and give the server a single round-trip for outlet access.
 Executable by `authenticated` + `service_role` only.
 
+## Integrity triggers
+
+RLS policies evaluate NEW rows, so the memberships UPDATE policy alone cannot
+stop a member re-pointing their own row's `business_id` at another tenant or
+escalating their own `role`. The `memberships_protect_identity` trigger makes
+`user_id` / `business_id` / `role` immutable for non-privileged roles
+(SQLSTATE 42501); `status` stays self-service. Privileged roles
+(postgres/service_role) manage identity fields server-side.
+
 ## Verification
 
 - `npm run db:verify` — applies migrations to a throwaway PostgreSQL and runs
-  ~25 assertions: tenant isolation, outlet grants, cross-tenant denial,
-  grant-table write denial, platform lockdown, service-role bypass.
+  the full assertion suite **including the six-scenario security matrix**
+  (`scripts/local-pg/security-matrix.sql`): cross-tenant reads/writes,
+  unauthorised outlets, invalid ids, forged parameters, direct SQL attacks.
+- `scripts/live-security-matrix.mjs` — replays the same six attack classes
+  against the hosted project with real auth users/JWTs, then removes all
+  fixtures. Requires env + PROJECT_REF + SUPABASE_ACCESS_TOKEN.
 - `src/lib/tenancy/*.test.ts` — pure resolution logic (unit).
-- End-to-end with real sessions is exercised from Phase 3 (auth) onward.
 
 ## What is intentionally NOT here yet
 
