@@ -64,8 +64,10 @@ real hosted Supabase project and the running app on `http://localhost:3000`:
 - anti-enumeration: identical generic errors for wrong password vs unknown email
 - logout revokes the session
 - forgot → reset: old password rejected, new password signs in
+- real admin-generated recovery link traced through GoTrue's /auth/v1/verify
+  hop to /auth/callback with the session fragment
 - full cleanup of test users
 
-Latest run: **23/23 checks passed** (public signup probe rate-limited by the
-shared Supabase SMTP quota — retry window dependent, logic verified via the
-admin-created path through the same GoTrue confirmation gate).
+Latest run: **26/26 checks passed** (public signup email dispatch excluded —
+see caveat below; signup logic verified via the admin-created path through
+the same GoTrue confirmation gate).
