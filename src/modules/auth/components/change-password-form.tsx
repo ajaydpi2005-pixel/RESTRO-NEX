@@ -9,7 +9,7 @@ import {
   FormError,
   FormSuccess,
   SubmitButton,
-} from "@/modules/auth/components/form-bits";
+} from "@/components/forms/form-bits";
 
 export function ChangePasswordForm() {
   const [state, formAction, pending] = useActionState(changePasswordAction, undefined);

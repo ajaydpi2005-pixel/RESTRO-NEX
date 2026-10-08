@@ -4,7 +4,7 @@ import { useActionState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { resetPasswordAction } from "@/modules/auth/actions";
-import { FieldError, FormError, SubmitButton } from "@/modules/auth/components/form-bits";
+import { FieldError, FormError, SubmitButton } from "@/components/forms/form-bits";
 
 export function ResetPasswordForm() {
   const [state, formAction, pending] = useActionState(resetPasswordAction, undefined);

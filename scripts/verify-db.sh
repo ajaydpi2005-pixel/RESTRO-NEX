@@ -53,3 +53,6 @@ $PSQL -f scripts/local-pg/assertions-phase2.sql
 
 echo "→ Running security test matrix (Phase 2)"
 $PSQL -f scripts/local-pg/security-matrix.sql
+
+echo "→ Running business/outlet management assertions (Phase 4)"
+$PSQL -f scripts/local-pg/assertions-phase4.sql

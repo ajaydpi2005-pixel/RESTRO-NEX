@@ -5,7 +5,7 @@ import { useActionState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { signInAction } from "@/modules/auth/actions";
-import { FieldError, FormError, SubmitButton } from "@/modules/auth/components/form-bits";
+import { FieldError, FormError, SubmitButton } from "@/components/forms/form-bits";
 
 export function SignInForm({ next }: { next: string }) {
   const [state, formAction, pending] = useActionState(signInAction, undefined);

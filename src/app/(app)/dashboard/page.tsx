@@ -31,13 +31,17 @@ export default async function DashboardPage() {
     .from("businesses")
     .select("id", { count: "exact", head: true });
 
+  const { count: outletCount } = await supabase
+    .from("outlets")
+    .select("id", { count: "exact", head: true });
+
   const displayName = profile?.full_name || user?.email || "there";
 
   return (
     <div className="space-y-6">
       <div className="space-y-2">
         <Badge variant="outline" className="w-fit border-gold/50 text-muted-foreground">
-          Phase {siteConfig.buildPhase + 3} · Authentication live
+          Phase {siteConfig.buildPhase + 4} · Business management live
         </Badge>
         <h1 className="font-display text-3xl font-semibold tracking-tight">
           Welcome back, {displayName}
@@ -58,16 +62,22 @@ export default async function DashboardPage() {
             <CardTitle className="text-base">Your restaurants</CardTitle>
             <CardDescription>
               {businessCount && businessCount > 0
-                ? `${businessCount} business${businessCount === 1 ? "" : "es"} linked to this account.`
-                : "No businesses yet — restaurant onboarding ships in Phase 6."}
+                ? `${businessCount} business${businessCount === 1 ? "" : "es"} · ${outletCount ?? 0} outlet${(outletCount ?? 0) === 1 ? "" : "s"} on this account.`
+                : "No businesses yet — create your business to start adding outlets."}
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-3">
             <p className="text-sm text-muted-foreground">
-              Onboarding will walk you through: business details, restaurant type, first outlet,
-              tax configuration, tables, kitchen stations, menu and staff invitations — then
-              straight to the POS.
+              Manage business profile, outlets, order types and operating hours from Settings.
+              Full guided onboarding — tables, kitchen stations, menu and staff — arrives in
+              Phase 6.
             </p>
+            <Button variant="outline" className="w-fit" asChild>
+              <Link href="/settings/business">
+                {businessCount && businessCount > 0 ? "Manage businesses" : "Create your business"}{" "}
+                <ArrowRight className="size-4" />
+              </Link>
+            </Button>
           </CardContent>
         </Card>
 
