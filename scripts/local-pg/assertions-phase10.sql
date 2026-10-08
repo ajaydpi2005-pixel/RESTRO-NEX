@@ -949,4 +949,29 @@ begin
   raise notice 'OK: cancelled orders take no payments';
 end $$;
 
+\echo '── P10.16: every RPC the app calls is executable by service_role (regression)'
+do $$
+declare
+  v_name text;
+  v_ok boolean;
+begin
+  foreach v_name in array array[
+    'create_business', 'complete_table', 'create_pos_order', 'amend_pos_order',
+    'transition_order_status', 'save_floor', 'save_section', 'save_table',
+    'delete_floor', 'delete_section', 'delete_table', 'reserve_table',
+    'release_table', 'transfer_table', 'merge_tables', 'split_order',
+    'set_outlet_floor_plan', 'record_payments', 'refund_payment', 'issue_invoice',
+    'void_invoice', 'record_receipt_print', 'payment_reconciliation', 'save_payment_method'
+  ] loop
+    select bool_and(has_function_privilege('service_role', p.oid, 'EXECUTE'))
+      into v_ok
+      from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+     where n.nspname = 'public' and p.proname = v_name;
+    if v_ok is distinct from true then
+      raise exception 'service_role cannot execute public.%', v_name;
+    end if;
+  end loop;
+  raise notice 'OK: service_role can execute every app-called RPC';
+end $$;
+
 \echo '── P10 complete'

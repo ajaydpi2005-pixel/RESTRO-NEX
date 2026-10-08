@@ -352,6 +352,30 @@ try {
 
   const cashierVoid = await rpc("void_invoice", { p_actor: U.cashier.id, p_invoice_id: invoiceId, p_reason: "cashier void try" });
   check("cashier cannot void an invoice", !okRpc(cashierVoid.status), `status ${cashierVoid.status}`);
+  const blockedVoid = await rpc("void_invoice", { p_actor: U.manager.id, p_invoice_id: invoiceId, p_reason: "Wrong customer name" });
+  check("void is refused while the order still has net payments",
+    !okRpc(blockedVoid.status) && /refund the recorded payments/i.test(blockedVoid.json?.message ?? ""), rpcError(blockedVoid) || "accepted");
+
+  // clear every remaining net payment (read from the ledger, not hard-coded)
+  const allPayments = await serviceSelect("payments", `order_id=eq.${order1}&select=id,amount_minor`);
+  const allRefunds = await serviceSelect("refunds", `order_id=eq.${order1}&select=payment_id,amount_minor`);
+  let clearOk = true;
+  for (const pay of allPayments) {
+    const refundedHere = allRefunds
+      .filter((r) => r.payment_id === pay.id)
+      .reduce((sum, r) => sum + r.amount_minor, 0);
+    const left = pay.amount_minor - refundedHere;
+    if (left <= 0) continue;
+    const res = await rpc("refund_payment", {
+      p_actor: U.manager.id, p_payment_id: pay.id, p_amount_minor: left,
+      p_reason: "Invoice corrected after refund", p_client_ref: batchKey("rf-clear", pay.id.slice(0, 8)),
+    });
+    clearOk = clearOk && okRpc(res.status);
+  }
+  check("manager refunds the remaining balance", clearOk);
+  const netAfterClear = (await serviceSelect("orders", `id=eq.${order1}&select=paid_minor`))[0]?.paid_minor;
+  check("net paid is zero before voiding", netAfterClear === 0, `net ${netAfterClear}`);
+
   const voidRes = await rpc("void_invoice", { p_actor: U.manager.id, p_invoice_id: invoiceId, p_reason: "Wrong customer name" });
   const voided = (await serviceSelect("invoices", `id=eq.${invoiceId}&select=status,invoice_no`))[0];
   check("manager voids the invoice and the number is kept",

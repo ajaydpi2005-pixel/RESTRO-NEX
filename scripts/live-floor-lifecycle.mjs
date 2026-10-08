@@ -505,7 +505,7 @@ try {
   );
   const winners = racers.filter((r) => okRpc(r.status));
   const losers = racers.filter((r) => !okRpc(r.status));
-  const raceOrders = await serviceSelect("orders", `client_ref=like.floor-race-${ts}-%&select=id`);
+  const raceOrders = await serviceSelect("orders", `client_ref=like.floor-race-${ts}-*&select=id`);
   const raceTableAfter = await tableRow(raceTable);
   check("exactly one concurrent seating wins", winners.length === 1, `${winners.length} winners`);
   check("all losers get the just-taken error", losers.every((r) => /just taken/i.test(r.json?.message ?? "")));
