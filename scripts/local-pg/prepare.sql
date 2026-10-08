@@ -61,3 +61,29 @@ create table if not exists storage.buckets (
 
 grant usage on schema storage to anon, authenticated, service_role;
 grant select on table storage.buckets to anon, authenticated, service_role;
+
+-- Minimal objects table + helpers so Phase 7's storage policies can be
+-- created and asserted locally (real Supabase ships these natively).
+create table if not exists storage.objects (
+  id uuid primary key default gen_random_uuid(),
+  bucket_id text references storage.buckets (id),
+  name text not null,
+  owner uuid,
+  created_at timestamptz not null default now()
+);
+alter table storage.objects enable row level security;
+
+create or replace function storage.foldername(p_name text)
+returns text[]
+language sql
+immutable
+as $$
+  select case
+    when p_name like '%/%' then string_to_array(regexp_replace(p_name, '/[^/]*$', ''), '/')
+    else '{}'::text[]
+  end;
+$$;
+
+-- Role privileges on objects (RLS policies decide who may actually act).
+grant select on table storage.objects to anon, authenticated, service_role;
+grant insert, update, delete on table storage.objects to authenticated, service_role;

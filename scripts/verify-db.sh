@@ -62,3 +62,6 @@ $PSQL -f scripts/local-pg/assertions-phase5.sql
 
 echo "→ Running onboarding assertions (Phase 6)"
 $PSQL -f scripts/local-pg/assertions-phase6.sql
+
+echo "→ Running universal menu assertions (Phase 7)"
+$PSQL -f scripts/local-pg/assertions-phase7.sql

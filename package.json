@@ -21,7 +21,8 @@
     "test:auth:e2e": "node scripts/live-auth-lifecycle.mjs",
     "test:business:e2e": "node scripts/live-business-lifecycle.mjs",
     "test:rbac:e2e": "node scripts/live-rbac-lifecycle.mjs",
-    "test:onboarding:e2e": "node scripts/live-onboarding-lifecycle.mjs"
+    "test:onboarding:e2e": "node scripts/live-onboarding-lifecycle.mjs",
+    "test:menu:e2e": "node scripts/live-menu-lifecycle.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
