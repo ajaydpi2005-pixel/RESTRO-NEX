@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { ForgotPasswordForm } from "@/modules/auth/components/forgot-password-form";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
+
 export const metadata: Metadata = {
   title: "Forgot password",
   description: "Request a password reset link for your RestroNex account.",

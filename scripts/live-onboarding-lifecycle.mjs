@@ -146,6 +146,34 @@ async function getActionFields(pageUrl, cookie) {
   return { fields, html, status: res.status };
 }
 
+function getFormsFromHtml(html) {
+  const forms = [];
+  for (const block of html.match(/<form\b[\s\S]*?<\/form>/g) ?? []) {
+    const actionFields = {};
+    for (const m of block.matchAll(/<input type="hidden" name="([^"]+)"(?: value="([^"]*)")?\/>/g)) {
+      const [, name, value] = m;
+      if (name.startsWith("$ACTION") || name === "businessId" || name === "outletId" || name === "token") {
+        actionFields[name] = (value ?? "").replace(/&quot;/g, '"');
+      }
+    }
+    forms.push({ html: block, actionFields });
+  }
+  return forms;
+}
+
+/**
+ * Step pages render more than one action form (main step form + skip-step
+ * form), each with its own $ACTION_REF. Fields must be taken from exactly one
+ * form — mixing refs across forms produces undecodable action submissions.
+ */
+async function getStepFormFields(pageUrl, cookie, ...needles) {
+  const res = await fetch(pageUrl, { headers: { cookie }, redirect: "manual" });
+  const html = await res.text();
+  const forms = getFormsFromHtml(html);
+  const form = forms.find((f) => needles.every((n) => f.html.includes(n)));
+  return { fields: form?.actionFields ?? {}, html, status: res.status, forms };
+}
+
 async function postAction(pageUrl, cookie, fields, entries) {
   const fd = new FormData();
   for (const [k, v] of Object.entries(fields)) {
@@ -155,12 +183,21 @@ async function postAction(pageUrl, cookie, fields, entries) {
     if (Array.isArray(v)) v.forEach((item) => fd.append(k, item));
     else fd.append(k, v);
   }
-  const res = await fetch(pageUrl, { method: "POST", headers: { cookie, next: "action" }, body: fd });
-  return { status: res.status, text: await res.text() };
+  const res = await fetch(pageUrl, {
+    method: "POST",
+    headers: { cookie, next: "action" },
+    body: fd,
+    redirect: "manual",
+  });
+  return { status: res.status, location: res.headers.get("location") ?? "", text: await res.text() };
 }
 
-/** Does the RSC response indicate a redirect to `to`? */
-const redirectsTo = (text, to) => text.includes(to);
+/**
+ * Does the response redirect to `to`? Action redirects arrive as a real 303
+ * + Location header; some flows encode the redirect inside the body instead.
+ */
+const redirectsTo = (res, to) =>
+  (res.status >= 300 && res.status < 400 && (res.location ?? "").includes(to)) || res.text.includes(to);
 
 async function serviceSelect(table, query = "") {
   const { json } = await got(`/rest/v1/${table}?${query}`, { service: true });
@@ -191,13 +228,13 @@ try {
 
   // ── 2. create business ──────────────────────────────────────────────────
   console.log("\n2 · create business (step: business)");
-  const bizPage = await getActionFields(`${APP}/onboarding/business`, owner.cookie);
+  const bizPage = await getStepFormFields(`${APP}/onboarding/business`, owner.cookie, `name="name"`, `name="currency"`);
   const bizPost = await postAction(`${APP}/onboarding/business`, owner.cookie, bizPage.fields, {
     name: `Phase6 E2E Bistro ${ts}`,
     currency: "INR",
     timezone: "Asia/Kolkata",
   });
-  check("business step saves & continues to type", redirectsTo(bizPost.text, "/onboarding/type"));
+  check("business step saves & continues to type", redirectsTo(bizPost, "/onboarding/type"));
 
   const membership = (await serviceSelect("memberships", `user_id=eq.${owner.id}&select=business_id,role`))[0];
   businessId = membership?.business_id ?? null;
@@ -212,19 +249,19 @@ try {
 
   // ── 3. restaurant type ──────────────────────────────────────────────────
   console.log("\n3 · restaurant type");
-  const typePage = await getActionFields(`${APP}/onboarding/type`, owner.cookie);
+  const typePage = await getStepFormFields(`${APP}/onboarding/type`, owner.cookie, `name="restaurantType"`);
   check("type step prefilled with business id", typePage.fields.businessId === businessId);
   const typePost = await postAction(`${APP}/onboarding/type`, owner.cookie, typePage.fields, {
     businessId,
     restaurantType: "casual_dining",
   });
-  check("type step advances to outlet", redirectsTo(typePost.text, "/onboarding/outlet"));
+  check("type step advances to outlet", redirectsTo(typePost, "/onboarding/outlet"));
   const bizAfterType = (await serviceSelect("businesses", `id=eq.${businessId}&select=restaurant_type`))[0];
   check("restaurant_type persisted", bizAfterType?.restaurant_type === "casual_dining");
 
   // ── 4. first outlet ─────────────────────────────────────────────────────
   console.log("\n4 · first outlet");
-  const outletPage = await getActionFields(`${APP}/onboarding/outlet`, owner.cookie);
+  const outletPage = await getStepFormFields(`${APP}/onboarding/outlet`, owner.cookie, `name="orderTypes"`);
   const outletPost = await postAction(`${APP}/onboarding/outlet`, owner.cookie, outletPage.fields, {
     businessId,
     name: "E2E Main Outlet",
@@ -233,7 +270,7 @@ try {
     city: "Chennai",
     orderTypes: ["dine_in", "takeaway"],
   });
-  check("outlet step advances to settings", redirectsTo(outletPost.text, "/onboarding/settings"));
+  check("outlet step advances to settings", redirectsTo(outletPost, "/onboarding/settings"));
   const outlet = (await serviceSelect("outlets", `business_id=eq.${businessId}&select=*`))[0];
   outletId = outlet?.id ?? null;
   check(
@@ -243,7 +280,7 @@ try {
 
   // ── 5. business settings ────────────────────────────────────────────────
   console.log("\n5 · business settings");
-  const setPage = await getActionFields(`${APP}/onboarding/settings`, owner.cookie);
+  const setPage = await getStepFormFields(`${APP}/onboarding/settings`, owner.cookie, `name="email"`, `name="addressLine1"`);
   const setPost = await postAction(`${APP}/onboarding/settings`, owner.cookie, setPage.fields, {
     businessId,
     name: `Phase6 E2E Bistro ${ts}`,
@@ -257,13 +294,13 @@ try {
     currency: "INR",
     timezone: "Asia/Kolkata",
   });
-  check("settings step advances to tax", redirectsTo(setPost.text, "/onboarding/tax"));
+  check("settings step advances to tax", redirectsTo(setPost, "/onboarding/tax"));
   const bizAfterSettings = (await serviceSelect("businesses", `id=eq.${businessId}&select=city,email`))[0];
   check("settings persisted", bizAfterSettings?.city === "Chennai" && bizAfterSettings?.email === "hello@phase6.example");
 
   // ── 6. tax settings ─────────────────────────────────────────────────────
   console.log("\n6 · tax settings");
-  const taxPage = await getActionFields(`${APP}/onboarding/tax`, owner.cookie);
+  const taxPage = await getStepFormFields(`${APP}/onboarding/tax`, owner.cookie, `name="taxNumber"`);
   const taxPost = await postAction(`${APP}/onboarding/tax`, owner.cookie, taxPage.fields, {
     businessId,
     taxEnabled: "yes",
@@ -273,7 +310,7 @@ try {
     ratePct: ["5", ""],
     rateInclusive: ["exclusive", "exclusive"],
   });
-  check("tax step advances to tables", redirectsTo(taxPost.text, "/onboarding/tables"));
+  check("tax step advances to tables", redirectsTo(taxPost, "/onboarding/tables"));
   const bizAfterTax = (await serviceSelect("businesses", `id=eq.${businessId}&select=tax_number,tax_settings`))[0];
   const rates = bizAfterTax?.tax_settings?.rates ?? [];
   check(
@@ -284,7 +321,7 @@ try {
 
   // ── 7. tables ───────────────────────────────────────────────────────────
   console.log("\n7 · tables");
-  const tablesPage = await getActionFields(`${APP}/onboarding/tables`, owner.cookie);
+  const tablesPage = await getStepFormFields(`${APP}/onboarding/tables`, owner.cookie, `name="sectionName"`);
   const tablesPost = await postAction(`${APP}/onboarding/tables`, owner.cookie, tablesPage.fields, {
     businessId,
     outletId,
@@ -292,27 +329,27 @@ try {
     tableCount: ["3", "2"],
     capacity: ["4", "2"],
   });
-  check("tables step advances to kitchen", redirectsTo(tablesPost.text, "/onboarding/kitchen"));
+  check("tables step advances to kitchen", redirectsTo(tablesPost, "/onboarding/kitchen"));
   const tables = await serviceSelect("dining_tables", `outlet_id=eq.${outletId}&select=label,capacity`);
   check("5 tables persisted across 2 sections", tables.length === 5);
   check("tables numbered T1..T5", tables.map((t) => t.label).sort().join(",") === "T1,T2,T3,T4,T5");
 
   // ── 8. kitchen stations ─────────────────────────────────────────────────
   console.log("\n8 · kitchen stations");
-  const kitchenPage = await getActionFields(`${APP}/onboarding/kitchen`, owner.cookie);
+  const kitchenPage = await getStepFormFields(`${APP}/onboarding/kitchen`, owner.cookie, `name="stationName"`);
   const kitchenPost = await postAction(`${APP}/onboarding/kitchen`, owner.cookie, kitchenPage.fields, {
     businessId,
     outletId,
     stationName: ["Hot kitchen", "Beverages"],
     stationDescription: ["", "Bar counter"],
   });
-  check("kitchen step advances to menu", redirectsTo(kitchenPost.text, "/onboarding/menu"));
+  check("kitchen step advances to menu", redirectsTo(kitchenPost, "/onboarding/menu"));
   const stations = await serviceSelect("kitchen_stations", `outlet_id=eq.${outletId}&select=name`);
   check("2 kitchen stations persisted", stations.length === 2);
 
   // ── 9. menu ─────────────────────────────────────────────────────────────
   console.log("\n9 · menu setup");
-  const menuPage = await getActionFields(`${APP}/onboarding/menu`, owner.cookie);
+  const menuPage = await getStepFormFields(`${APP}/onboarding/menu`, owner.cookie, `name="categoryName"`);
   const menuPost = await postAction(`${APP}/onboarding/menu`, owner.cookie, menuPage.fields, {
     businessId,
     categoryName: ["Starters", "Mains"],
@@ -321,7 +358,7 @@ try {
     itemFood: ["veg", "veg"],
     itemDescription: ["", "House special"],
   });
-  check("menu step advances to staff", redirectsTo(menuPost.text, "/onboarding/staff"));
+  check("menu step advances to staff", redirectsTo(menuPost, "/onboarding/staff"));
   const items = await serviceSelect("menu_items", `business_id=eq.${businessId}&select=name,price_minor`);
   check(
     "menu items persisted with exact minor-unit prices",
@@ -331,7 +368,7 @@ try {
 
   // ── 10. staff invitation + acceptance ───────────────────────────────────
   console.log("\n10 · staff invitation");
-  const staffPage = await getActionFields(`${APP}/onboarding/staff`, owner.cookie);
+  const staffPage = await getStepFormFields(`${APP}/onboarding/staff`, owner.cookie, `name="expiryDays"`);
   const invitePost = await postAction(`${APP}/onboarding/staff`, owner.cookie, staffPage.fields, {
     businessId,
     email: STAFF.email,
@@ -352,9 +389,9 @@ try {
   const acceptPost = await postAction(`${APP}/invite/${inviteToken}`, staff.cookie, acceptPage.fields, {
     token: inviteToken,
   });
-  check("acceptance routes to dashboard", redirectsTo(acceptPost.text, "/dashboard?joined=1"));
+  check("acceptance routes to dashboard", redirectsTo(acceptPost, "/dashboard?joined=1"));
   const staffMembership = (
-    await serviceSelect("memberships", `user_id=eq.${staff.id}&business_id=eq.${businessId}&select=role,status`)
+    await serviceSelect("memberships", `user_id=eq.${staff.id}&business_id=eq.${businessId}&select=id,role,status`)
   )[0];
   check("staff membership created as waiter", staffMembership?.role === "waiter" && staffMembership?.status === "active");
 
@@ -388,16 +425,26 @@ try {
   const bizAfterAttack = (await serviceSelect("businesses", `id=eq.${businessId}&select=tax_number`))[0];
   check(
     "waiter blocked from onboarding writes",
-    /owners and admins|permission/i.test(taxAttack.text) && bizAfterAttack?.tax_number === "33PHASE6E2E1Z5",
+    bizAfterAttack?.tax_number === "33PHASE6E2E1Z5" && !/HACKED/.test(JSON.stringify(bizAfterAttack)),
+    `status ${taxAttack.status}`,
   );
 
-  // required steps cannot be skipped
-  const skipPage = await getActionFields(`${APP}/onboarding/outlet`, owner.cookie);
-  const skipAttack = await postAction(`${APP}/onboarding/outlet`, owner.cookie, skipPage.fields, {
+  // required steps cannot be skipped — forge step="outlet" into the skip form
+  // of the step the owner is actually on (the outlet page now redirects past
+  // the wizard position, so its form is unreachable by design).
+  const skipPage = await getStepFormFields(`${APP}/onboarding/staff`, owner.cookie, `name="step"`);
+  const progressBefore = (await serviceSelect("onboarding_progress", `business_id=eq.${businessId}&select=current_step,completed_steps`))[0];
+  const skipAttack = await postAction(`${APP}/onboarding/staff`, owner.cookie, skipPage.fields, {
     businessId,
     step: "outlet",
   });
-  check("required step cannot be skipped", /can't be skipped/i.test(skipAttack.text));
+  const progressAfter = (await serviceSelect("onboarding_progress", `business_id=eq.${businessId}&select=current_step,completed_steps`))[0];
+  check(
+    "required step cannot be skipped",
+    /can't be skipped/i.test(skipAttack.text) &&
+      JSON.stringify(progressBefore) === JSON.stringify(progressAfter),
+    `status ${skipAttack.status}`,
+  );
 
   // staff cannot forge invites into the business
   const staffInvitePage = await getActionFields(`${APP}/onboarding/staff`, staff.cookie);
@@ -419,7 +466,7 @@ try {
   console.log("\n12 · finish");
   const finishPage = await getActionFields(`${APP}/onboarding/finish`, owner.cookie);
   const finishPost = await postAction(`${APP}/onboarding/finish`, owner.cookie, finishPage.fields, { businessId });
-  check("finish routes to dashboard with celebration flag", redirectsTo(finishPost.text, "/dashboard?onboarded=1"));
+  check("finish routes to dashboard with celebration flag", redirectsTo(finishPost, "/dashboard?onboarded=1"));
   const finalProgress = (await serviceSelect("onboarding_progress", `business_id=eq.${businessId}&select=*`))[0];
   check(
     "onboarding stamped complete with full step history",

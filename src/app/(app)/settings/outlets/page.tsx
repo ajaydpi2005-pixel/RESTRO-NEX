@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { MapPin, Phone, Plus, Store } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -9,6 +8,7 @@ import { getManagedBusinesses, getOwnedOutlets, type OrderType } from "@/modules
 import { ORDER_TYPE_LABELS, WEEKDAYS } from "@/modules/business/schemas";
 import { hasPermission } from "@/lib/rbac/permissions";
 import { OutletStatusToggle } from "@/modules/business/components/outlet-status-toggle";
+import { guardRedirect } from "@/lib/guarded-redirect";
 
 export const metadata: Metadata = { title: "Outlets" };
 
@@ -32,7 +32,7 @@ export default async function OutletsPage({
   const owned = businesses.filter((b) => hasPermission(b.role, "outlets.manage"));
 
   if (owned.length === 0) {
-    redirect("/settings/business");
+    return await guardRedirect("/settings/business");
   }
 
   // Pick the business: explicit ?business= param if owned, else the only

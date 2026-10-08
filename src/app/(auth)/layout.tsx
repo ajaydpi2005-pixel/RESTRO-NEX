@@ -1,8 +1,12 @@
 import Link from "next/link";
+import { connection } from "next/server";
 import { Logo } from "@/components/brand/logo";
 
 /** Minimal centered layout for authentication screens. */
-export default function AuthLayout({ children }: { children: React.ReactNode }) {
+export default async function AuthLayout({ children }: { children: React.ReactNode }) {
+  // Auth forms submit server actions; force request-time rendering so the
+  // action reply never replays a prerendered shell (see (app)/layout.tsx).
+  await connection();
   return (
     <div className="relative flex min-h-dvh flex-col items-center justify-center px-4 py-12">
       <div

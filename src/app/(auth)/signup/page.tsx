@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { SignUpForm } from "@/modules/auth/components/sign-up-form";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
+
 export const metadata: Metadata = {
   title: "Sign up",
   description: "Create your RestroNex account.",

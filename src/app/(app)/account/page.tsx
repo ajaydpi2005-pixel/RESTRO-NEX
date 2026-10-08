@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
-import { redirect } from "next/navigation";
 import { Mail, ShieldCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/server";
 import { ChangePasswordForm } from "@/modules/auth/components/change-password-form";
 import { ProfileForm } from "@/modules/auth/components/profile-form";
+import { guardRedirect } from "@/lib/guarded-redirect";
 
 export const metadata: Metadata = { title: "Account" };
 
@@ -16,7 +16,7 @@ export default async function AccountPage() {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect("/login");
+    return await guardRedirect("/login");
   }
 
   const { data: profile } = await supabase

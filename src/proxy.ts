@@ -65,13 +65,28 @@ export async function proxy(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
+  // A 3xx redirect returned for a form-encoded POST (a Server Action
+  // submission) makes the framework replay the POST against the redirect
+  // target; the body stream is already consumed by then and the replay dies
+  // with "Failed to parse body as FormData" (bare 500). For those requests
+  // we pass through and let the app-level guards (guardRedirect) render a
+  // client-side redirect instead.
+  const contentType = request.headers.get("content-type") ?? "";
+  const isActionLikePost =
+    request.method === "POST" &&
+    (request.headers.get("next-action") !== null ||
+      contentType.startsWith("multipart/form-data") ||
+      contentType.startsWith("application/x-www-form-urlencoded"));
+
   if (matches(pathname, PROTECTED_PREFIXES) && !user) {
+    if (isActionLikePost) return response;
     const target = new URL("/login", request.url);
     target.searchParams.set("next", pathname);
     return NextResponse.redirect(target);
   }
 
   if (matches(pathname, AUTH_PAGES) && user) {
+    if (isActionLikePost) return response;
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 

@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { CircleCheck, CircleDashed } from "lucide-react";
 import { assignableRoles, canAssignRole, isRole } from "@/lib/rbac/permissions";
 import { OnboardingShell, StepCard, StepNavBack } from "@/modules/onboarding/components/onboarding-shell";
@@ -34,6 +33,7 @@ import {
 } from "@/modules/onboarding/steps";
 import { RESTAURANT_TYPE_LABELS } from "@/modules/business/schemas";
 import { Badge } from "@/components/ui/badge";
+import { guardRedirect } from "@/lib/guarded-redirect";
 
 export const metadata: Metadata = { title: "Set up your restaurant" };
 
@@ -45,11 +45,11 @@ export default async function OnboardingStepPage({
   const { step: rawStep } = await params;
   const context = await getOnboardingContext();
 
-  if (!context.userId) redirect("/login?next=/onboarding");
+  if (!context.userId) return await guardRedirect("/login?next=/onboarding");
 
   // No business yet → the only meaningful step is creating one.
   if (!context.business) {
-    if (rawStep !== "business") redirect("/onboarding/business");
+    if (rawStep !== "business") return await guardRedirect("/onboarding/business");
     return (
       <OnboardingShell currentStep="business" completedSteps={[]} businessName={null}>
         <StepCard step="business">
@@ -60,7 +60,7 @@ export default async function OnboardingStepPage({
   }
 
   // Onboarding already finished for every business this user manages.
-  if (context.progress?.completedAt) redirect("/dashboard");
+  if (context.progress?.completedAt) return await guardRedirect("/dashboard");
 
   const business = context.business;
   const outlets = await loadOutlets(business.id);
@@ -73,10 +73,10 @@ export default async function OnboardingStepPage({
   const completedList = [...completed];
 
   const step: OnboardingStepId = isOnboardingStep(rawStep) ? rawStep : "business";
-  if (step === "business") redirect(`/onboarding/${resolveStep("type", completedList)}`);
+  if (step === "business") return await guardRedirect(`/onboarding/${resolveStep("type", completedList)}`);
 
   const resolved = resolveStep(step, completedList);
-  if (resolved !== step) redirect(`/onboarding/${resolved}`);
+  if (resolved !== step) return await guardRedirect(`/onboarding/${resolved}`);
 
   // ── step content ──────────────────────────────────────────────────────────
   const previousIndex = ONBOARDING_STEPS.indexOf(step) - 1;
@@ -214,7 +214,7 @@ export default async function OnboardingStepPage({
       break;
     }
     default:
-      redirect("/onboarding");
+      return await guardRedirect("/onboarding");
   }
 
   footer = (

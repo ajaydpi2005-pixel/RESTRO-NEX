@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import {
   BookOpen,
   Image as ImageIcon,
@@ -17,6 +16,7 @@ import { getViewerAbilities } from "@/lib/rbac/enforce";
 import { MenuBusinessPicker } from "@/modules/menu/components/business-gate";
 import { resolveMenuBusiness } from "@/modules/menu/context";
 import { loadCategoryTree, loadMenuStats } from "@/modules/menu/queries";
+import { guardRedirect } from "@/lib/guarded-redirect";
 
 export const metadata: Metadata = { title: "Menu" };
 
@@ -27,7 +27,7 @@ export default async function MenuDashboardPage({
 }) {
   const params = await searchParams;
   const { withMenuView, business } = await resolveMenuBusiness(params.business);
-  if (withMenuView.length === 0) redirect("/settings");
+  if (withMenuView.length === 0) return await guardRedirect("/settings");
   if (!business) return <MenuBusinessPicker businesses={withMenuView} basePath="/menu" />;
 
   const abilities = await getViewerAbilities(business.id);

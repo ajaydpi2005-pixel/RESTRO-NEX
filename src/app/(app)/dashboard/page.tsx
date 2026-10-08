@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { ArrowRight, PartyPopper, Rocket, Store, UserRound } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,6 +10,7 @@ import { getOnboardingContext } from "@/modules/onboarding/queries";
 import { completionPercent } from "@/modules/onboarding/steps";
 
 import { siteConfig } from "@/config/site";
+import { guardRedirect } from "@/lib/guarded-redirect";
 
 export const metadata: Metadata = { title: "Dashboard" };
 
@@ -41,7 +41,7 @@ export default async function DashboardPage({
     .eq("status", "active");
 
   if ((membershipCount ?? 0) === 0) {
-    redirect("/onboarding");
+    return await guardRedirect("/onboarding");
   }
 
   const onboarding = await getOnboardingContext();

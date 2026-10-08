@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,6 +13,7 @@ import { resolveMenuBusiness } from "@/modules/menu/context";
 import { menuImageUrl } from "@/modules/menu/image";
 import { minorToDisplay } from "@/modules/menu/schemas";
 import { loadComboDetail, loadProductPicker } from "@/modules/menu/queries";
+import { guardRedirect } from "@/lib/guarded-redirect";
 
 export const metadata: Metadata = { title: "Edit combo" };
 
@@ -26,7 +27,7 @@ export default async function EditComboPage({
   const { id } = await params;
   const query = await searchParams;
   const { withMenuView, business } = await resolveMenuBusiness(query.business);
-  if (withMenuView.length === 0) redirect("/settings");
+  if (withMenuView.length === 0) return await guardRedirect("/settings");
   if (!business) return <MenuBusinessPicker businesses={withMenuView} basePath={`/menu/combos/${id}`} />;
 
   const abilities = await getViewerAbilities(business.id);

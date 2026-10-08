@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { ChevronLeft, Plus, Search } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,6 +10,7 @@ import { MenuBusinessPicker } from "@/modules/menu/components/business-gate";
 import { resolveMenuBusiness } from "@/modules/menu/context";
 import { loadCombos } from "@/modules/menu/queries";
 import { minorToDisplay } from "@/modules/menu/schemas";
+import { guardRedirect } from "@/lib/guarded-redirect";
 
 export const metadata: Metadata = { title: "Combos" };
 
@@ -21,7 +21,7 @@ export default async function CombosPage({
 }) {
   const params = await searchParams;
   const { withMenuView, business } = await resolveMenuBusiness(params.business);
-  if (withMenuView.length === 0) redirect("/settings");
+  if (withMenuView.length === 0) return await guardRedirect("/settings");
   if (!business) return <MenuBusinessPicker businesses={withMenuView} basePath="/menu/combos" />;
 
   const abilities = await getViewerAbilities(business.id);

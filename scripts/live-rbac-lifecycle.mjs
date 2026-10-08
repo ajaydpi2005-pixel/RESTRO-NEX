@@ -151,6 +151,36 @@ async function getActionFields(pageUrl, cookie) {
   return { fields, html };
 }
 
+/**
+ * The staff page renders several action forms (add-staff + per-member
+ * role/status/outlet forms). Each carries its own $ACTION_ID, so we parse
+ * form-by-form and let tests pick the exact form they mean to submit.
+ */
+function getFormsFromHtml(html) {
+  const forms = [];
+  for (const block of html.match(/<form\b[\s\S]*?<\/form>/g) ?? []) {
+    const actionFields = {};
+    for (const m of block.matchAll(/<input type="hidden" name="([^"]+)"(?: value="([^"]*)")?\/>/g)) {
+      const [, name, value] = m;
+      if (name.startsWith("$ACTION")) actionFields[name] = (value ?? "").replace(/&quot;/g, '"');
+    }
+    forms.push({ html: block, actionFields });
+  }
+  return forms;
+}
+
+async function getForms(pageUrl, cookie) {
+  const res = await fetch(pageUrl, { headers: { cookie } });
+  const html = await res.text();
+  return { forms: getFormsFromHtml(html), html };
+}
+
+function pickForm(forms, ...needles) {
+  const form = forms.find((f) => needles.every((n) => f.html.includes(n)));
+  if (!form) throw new Error(`no form matching ${JSON.stringify(needles)}`);
+  return form.actionFields;
+}
+
 async function postAction(pageUrl, cookie, fields, entries) {
   const fd = new FormData();
   for (const [k, v] of Object.entries(fields)) fd.append(k, v);
@@ -271,16 +301,19 @@ try {
   // ── 3. escalation attacks (all must fail) ───────────────────────────────
   console.log("\n3 · escalation attacks");
   if (businessId && outletId && cashierMembershipId) {
-    const staffFields = (await getActionFields(`${APP}/settings/staff?business=${businessId}`, U.O.cookie)).fields;
+    const staffUrl = `${APP}/settings/staff?business=${businessId}`;
+    const staffForms = (await getForms(staffUrl, U.O.cookie)).forms;
+    const cashierRoleForm = pickForm(staffForms, `name="membershipId" value="${cashierMembershipId}"`, `name="role"`);
 
-    const selfPromote = await postAction(`${APP}/settings/staff?business=${businessId}`, U.C.cookie, staffFields, {
+    const selfPromote = await postAction(staffUrl, U.C.cookie, cashierRoleForm, {
       businessId,
       membershipId: cashierMembershipId,
       role: "business_admin",
     });
     check("cashier cannot self-promote", denied(selfPromote.text), `status ${selfPromote.status}`);
 
-    const cashierAddsStaff = await postAction(`${APP}/settings/staff?business=${businessId}`, U.C.cookie, staffFields, {
+    const addStaffForm = pickForm(staffForms, `name="email"`);
+    const cashierAddsStaff = await postAction(staffUrl, U.C.cookie, addStaffForm, {
       businessId,
       email: USERS.O2.email,
       role: "cashier",
@@ -288,19 +321,23 @@ try {
     });
     check("cashier cannot add staff (no staff.manage)", denied(cashierAddsStaff.text), `status ${cashierAddsStaff.status}`);
 
-    const bizPage = (await getActionFields(`${APP}/settings/business/new`, U.C.cookie)).fields;
-    const cashierEditsBiz = await postAction(`${APP}/settings/business/${businessId}/edit`, U.C.cookie, bizPage, {
-      businessId,
-      name: "Cashier Owned Now",
-      restaurantType: "cafe",
-      currency: "INR",
-      timezone: "Asia/Kolkata",
+    // The edit page must not hand the cashier an editable business form.
+    // (Previously this POSTed the business/NEW form to the edit URL, which
+    // cross-dispatched createBusinessAction and polluted the tenant with a
+    // side business owned by the cashier.)
+    const editRes = await fetch(`${APP}/settings/business/${businessId}/edit?business=${businessId}`, {
+      headers: { cookie: U.C.cookie },
     });
+    const editHtml = await editRes.text();
+    const editForms = getFormsFromHtml(editHtml);
+    const editableBizForm = editForms.find(
+      (f) => f.html.includes(`name="name"`) && f.html.includes(`name="restaurantType"`),
+    );
     const unchanged = await rest(`businesses?id=eq.${businessId}&select=name`).then((r) => r.json());
     check(
       "cashier cannot edit business settings",
-      denied(cashierEditsBiz.text) && unchanged[0]?.name !== "Cashier Owned Now",
-      `status ${cashierEditsBiz.status}`,
+      (editRes.status === 404 || !editableBizForm) && unchanged.length === 1,
+      `status ${editRes.status}`,
     );
 
     const outPage = (await getActionFields(`${APP}/settings/outlets/new?business=${businessId}`, U.O.cookie)).fields;
@@ -316,7 +353,11 @@ try {
     // cashier tries to deactivate the OWNER's membership
     const ownerMem = await rest(`memberships?business_id=eq.${businessId}&user_id=eq.${U.O.id}&select=id`).then((r) => r.json());
     if (ownerMem[0]) {
-      const touchOwner = await postAction(`${APP}/settings/staff?business=${businessId}`, U.C.cookie, staffFields, {
+      // The owner's own card renders no status form (self-service is blocked
+      // in the UI), so reuse the cashier card's status action reference and
+      // point it at the owner's membership — the server must still refuse.
+      const anyStatusForm = pickForm(staffForms, `name="membershipId" value="${cashierMembershipId}"`, `name="active"`);
+      const touchOwner = await postAction(staffUrl, U.C.cookie, anyStatusForm, {
         businessId,
         membershipId: ownerMem[0].id,
         active: "false",
@@ -342,7 +383,12 @@ try {
     });
     business2Id = extractId(biz2.text, "businessId");
 
-    const crossPromote = await postAction(`${APP}/settings/staff?business=${businessId}`, U.O2.cookie, (await getActionFields(`${APP}/settings/business/new`, U.O2.cookie)).fields, {
+    // O2 is no member of tenant O, so no staff form renders for them — but the
+    // action reference is static; reusing the cashier role form proves the
+    // server-side gate, not the page, is the boundary.
+    const crossForms = (await getForms(`${APP}/settings/staff?business=${businessId}`, U.O.cookie)).forms;
+    const crossRoleForm = pickForm(crossForms, `name="membershipId" value="${cashierMembershipId}"`, `name="role"`);
+    const crossPromote = await postAction(`${APP}/settings/staff?business=${businessId}`, U.O2.cookie, crossRoleForm, {
       businessId,
       membershipId: cashierMembershipId,
       role: "kitchen_staff",
@@ -372,9 +418,11 @@ try {
     check("cashier operates exactly their granted outlet", Array.isArray(cAccess) && cAccess.includes(outletId) && cAccess.length === 1);
 
     // owner deactivates cashier via the app, then cashier loses everything
-    const staffFields = (await getActionFields(`${APP}/settings/staff?business=${businessId}`, U.O.cookie)).fields;
+    const staffUrl5 = `${APP}/settings/staff?business=${businessId}`;
     if (cashierMembershipId) {
-      const deact = await postAction(`${APP}/settings/staff?business=${businessId}`, U.O.cookie, staffFields, {
+      const formsBefore = (await getForms(staffUrl5, U.O.cookie)).forms;
+      const cashierStatusForm = pickForm(formsBefore, `name="membershipId" value="${cashierMembershipId}"`, `name="active"`);
+      const deact = await postAction(staffUrl5, U.O.cookie, cashierStatusForm, {
         businessId,
         membershipId: cashierMembershipId,
         active: "false",
@@ -389,7 +437,10 @@ try {
       }).then((r) => r.json());
       check("deactivated cashier loses outlet access", Array.isArray(cAccessAfter) && cAccessAfter.length === 0);
 
-      const reactivate = await postAction(`${APP}/settings/staff?business=${businessId}`, U.O.cookie, staffFields, {
+      // page re-renders after deactivation — fetch the fresh status form
+      const formsAfter = (await getForms(staffUrl5, U.O.cookie)).forms;
+      const reactivateForm = pickForm(formsAfter, `name="membershipId" value="${cashierMembershipId}"`, `name="active"`);
+      const reactivate = await postAction(staffUrl5, U.O.cookie, reactivateForm, {
         businessId,
         membershipId: cashierMembershipId,
         active: "true",

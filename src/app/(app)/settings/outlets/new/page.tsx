@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { OutletForm } from "@/modules/business/components/outlet-form";
 import { getManagedBusinesses } from "@/modules/business/queries";
 import { hasPermission } from "@/lib/rbac/permissions";
+import { guardRedirect } from "@/lib/guarded-redirect";
 
 export const metadata: Metadata = { title: "Add outlet" };
 
@@ -19,7 +20,7 @@ export default async function NewOutletPage({
   const owned = businesses.filter((b) => hasPermission(b.role, "outlets.manage"));
 
   if (owned.length === 0) {
-    redirect("/settings/business");
+    return await guardRedirect("/settings/business");
   }
 
   const business = params.business

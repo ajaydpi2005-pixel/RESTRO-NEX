@@ -9,7 +9,6 @@ export const metadata: Metadata = {
 };
 
 /** Reads `searchParams` (next/error) — blocking route, not a static shell. */
-export const instant = false;
 
 export default async function LoginPage({
   searchParams,

@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { findActiveMembership, getViewerAbilities } from "@/lib/rbac/enforce";
@@ -10,6 +9,7 @@ import { resolveOrdersBusiness } from "@/modules/orders/context";
 import { loadOrders, loadPosOutlets } from "@/modules/orders/queries";
 import { ORDER_STATE_LABELS, ORDER_TYPE_LABELS, isOrderState, type OrderState, type OrderType } from "@/modules/orders/state";
 import { cn } from "@/lib/utils";
+import { guardRedirect } from "@/lib/guarded-redirect";
 
 export const metadata: Metadata = { title: "Orders" };
 
@@ -33,7 +33,7 @@ export default async function OrdersPage({
 }) {
   const params = await searchParams;
   const { withOrdersView, business } = await resolveOrdersBusiness(params.business);
-  if (withOrdersView.length === 0) redirect("/settings");
+  if (withOrdersView.length === 0) return await guardRedirect("/settings");
   if (!business) return <OrdersBusinessPicker businesses={withOrdersView} basePath="/orders" />;
 
   const abilities = await getViewerAbilities(business.id);
@@ -47,7 +47,7 @@ export default async function OrdersPage({
   }
 
   const membership = abilities.userId ? await findActiveMembership(abilities.userId, business.id) : null;
-  if (!membership) redirect("/settings");
+  if (!membership) return await guardRedirect("/settings");
   const outlets = await loadPosOutlets(business.id, membership.role, membership.id);
 
   const group: Group = GROUPS.includes(params.group as Group) ? (params.group as Group) : "active";

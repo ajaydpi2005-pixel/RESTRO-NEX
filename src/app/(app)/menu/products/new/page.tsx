@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getViewerAbilities } from "@/lib/rbac/enforce";
@@ -8,6 +7,7 @@ import { MenuBusinessPicker } from "@/modules/menu/components/business-gate";
 import { CreateProductForm } from "@/modules/menu/components/create-product-form";
 import { resolveMenuBusiness } from "@/modules/menu/context";
 import { flatCategoryOptions, loadCategoryTree } from "@/modules/menu/queries";
+import { guardRedirect } from "@/lib/guarded-redirect";
 
 export const metadata: Metadata = { title: "New product" };
 
@@ -18,11 +18,11 @@ export default async function NewProductPage({
 }) {
   const params = await searchParams;
   const { withMenuView, business } = await resolveMenuBusiness(params.business);
-  if (withMenuView.length === 0) redirect("/settings");
+  if (withMenuView.length === 0) return await guardRedirect("/settings");
   if (!business) return <MenuBusinessPicker businesses={withMenuView} basePath="/menu/products/new" />;
 
   const abilities = await getViewerAbilities(business.id);
-  if (!abilities.can("menu.manage")) redirect(`/menu/products?business=${business.id}`);
+  if (!abilities.can("menu.manage")) return await guardRedirect(`/menu/products?business=${business.id}`);
 
   const tree = await loadCategoryTree(business.id);
   const categories = flatCategoryOptions(tree);

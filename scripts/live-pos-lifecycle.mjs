@@ -136,6 +136,9 @@ async function createConfirmedUser({ email, password }) {
   };
 }
 
+/** PostgREST RPC success: 200 (value) or 204 (void). */
+const okRpc = (status) => status === 200 || status === 204;
+
 async function serviceSelect(table, query = "") {
   const { json } = await got(`/rest/v1/${table}?${query}`, { service: true });
   return Array.isArray(json) ? json : [];
@@ -183,7 +186,15 @@ try {
   await got("/rest/v1/outlets", {
     method: "POST",
     service: true,
-    body: { business_id: businessA, name: "pos-a main", slug: `pos-a-${ts}`, status: "active" },
+    prefer: "return=representation",
+    body: {
+      business_id: businessA,
+      name: "pos-a main",
+      slug: `pos-a-${ts}`,
+      code: `PA${String(ts).slice(-6)}`,
+      currency_code: "INR",
+      status: "active",
+    },
   });
   outletA = (await serviceSelect("outlets", `business_id=eq.${businessA}&select=id`))[0]?.id ?? null;
   check("tenant A outlet created", Boolean(outletA));
@@ -200,12 +211,14 @@ try {
   const burgers = await got("/rest/v1/menu_items", {
     method: "POST",
     service: true,
+    prefer: "return=representation",
     body: { business_id: businessA, category_id: categoryId, name: `E2E Burger ${ts}`, price_minor: 10000 },
   });
   productBurger = burgers.json?.[0]?.id ?? null;
   const fries = await got("/rest/v1/menu_items", {
     method: "POST",
     service: true,
+    prefer: "return=representation",
     body: { business_id: businessA, category_id: categoryId, name: `E2E Fries ${ts}`, price_minor: 5000, tax_rate_pct: 5 },
   });
   productFries = fries.json?.[0]?.id ?? null;
@@ -213,6 +226,7 @@ try {
   const variant = await got("/rest/v1/product_variants", {
     method: "POST",
     service: true,
+    prefer: "return=representation",
     body: { business_id: businessA, product_id: productBurger, name: "Large", price_minor: 15000 },
   });
   variantLarge = variant.json?.[0]?.id ?? null;
@@ -220,24 +234,28 @@ try {
   const group = await got("/rest/v1/modifier_groups", {
     method: "POST",
     service: true,
+    prefer: "return=representation",
     body: { business_id: businessA, name: `E2E Toppings ${ts}`, min_selected: 0, max_selected: 2 },
   });
   const groupId = group.json?.[0]?.id ?? null;
   const cheese = await got("/rest/v1/modifiers", {
     method: "POST",
     service: true,
+    prefer: "return=representation",
     body: { business_id: businessA, modifier_group_id: groupId, name: "E2E Cheese", price_minor: 2000 },
   });
   modifierCheese = cheese.json?.[0]?.id ?? null;
   await got("/rest/v1/product_modifier_groups", {
     method: "POST",
     service: true,
+    prefer: "return=representation",
     body: { product_id: productBurger, modifier_group_id: groupId },
   });
 
   const combo = await got("/rest/v1/combos", {
     method: "POST",
     service: true,
+    prefer: "return=representation",
     body: { business_id: businessA, name: `E2E Meal ${ts}`, price_minor: 20000 },
   });
   comboMeal = combo.json?.[0]?.id ?? null;
@@ -246,6 +264,7 @@ try {
   await got("/rest/v1/outlet_variant_overrides", {
     method: "POST",
     service: true,
+    prefer: "return=representation",
     body: { variant_id: variantLarge, outlet_id: outletA, price_minor: 16000 },
   });
 
@@ -253,12 +272,14 @@ try {
   const section = await got("/rest/v1/dining_sections", {
     method: "POST",
     service: true,
+    prefer: "return=representation",
     body: { business_id: businessA, outlet_id: outletA, name: "E2E Hall" },
   });
   const sectionId = section.json?.[0]?.id ?? null;
   const table = await got("/rest/v1/dining_tables", {
     method: "POST",
     service: true,
+    prefer: "return=representation",
     body: { business_id: businessA, outlet_id: outletA, section_id: sectionId, label: `T-${ts}`, capacity: 4 },
   });
   tableId = table.json?.[0]?.id ?? null;
@@ -342,7 +363,7 @@ try {
     p_actor: userA.id,
     p_payload: { ...happyPayload, client_ref: `pos-notable-${ts}`, order_type: "dine_in", table_id: null },
   });
-  check("dine-in without table rejected", noTable.status !== 200, noTable.text.slice(0, 120));
+  check("dine-in without table rejected", !okRpc(noTable.status), noTable.text.slice(0, 120));
 
   const noPhone = await rpc("create_pos_order", {
     p_actor: userA.id,
@@ -353,18 +374,20 @@ try {
       items: [{ item_type: "product", product_id: productFries, quantity: 1 }],
     },
   });
-  check("delivery without phone/address rejected", noPhone.status !== 200, noPhone.text.slice(0, 120));
+  check("delivery without phone/address rejected", !okRpc(noPhone.status), noPhone.text.slice(0, 120));
 
   // cross-tenant item needs tenant B's own category
   const catB = await got("/rest/v1/menu_categories", {
     method: "POST",
     service: true,
+    prefer: "return=representation",
     body: { business_id: businessB, name: `POS B ${ts}` },
   });
   const catBId = catB.json?.[0]?.id ?? null;
   const bProd = await got("/rest/v1/menu_items", {
     method: "POST",
     service: true,
+    prefer: "return=representation",
     body: { business_id: businessB, category_id: catBId, name: `E2E B Item ${ts}`, price_minor: 100 },
   });
   const bProductId = bProd.json?.[0]?.id ?? null;
@@ -377,7 +400,7 @@ try {
       items: [{ item_type: "product", product_id: bProductId, quantity: 1 }],
     },
   });
-  check("cross-tenant product rejected", crossTenant.status !== 200, crossTenant.text.slice(0, 120));
+  check("cross-tenant product rejected", !okRpc(crossTenant.status), crossTenant.text.slice(0, 120));
 
   const countAfter = (await serviceSelect("orders", `business_id=eq.${businessA}&select=id`)).length;
   check("rejected creates left no rows (transactional)", countAfter === countBefore, `${countBefore} → ${countAfter}`);
@@ -398,18 +421,18 @@ try {
   check("lifecycle order created (open)", Boolean(lcId));
 
   const skip = await rpc("transition_order_status", { p_actor: userA.id, p_order_id: lcId, p_to: "preparing" });
-  check("open → preparing blocked", skip.status !== 200);
+  check("open → preparing blocked", !okRpc(skip.status));
 
   const hold = await rpc("transition_order_status", { p_actor: userA.id, p_order_id: lcId, p_to: "held" });
   const resume = await rpc("transition_order_status", { p_actor: userA.id, p_order_id: lcId, p_to: "open" });
-  check("hold ↔ resume works", hold.status === 200 && resume.status === 200);
+  check("hold ↔ resume works", okRpc(hold.status) && okRpc(resume.status));
 
   for (const to of ["placed", "preparing", "ready"]) {
     const r = await rpc("transition_order_status", { p_actor: userA.id, p_order_id: lcId, p_to: to });
-    check(`advanced to ${to}`, r.status === 200, r.text.slice(0, 120));
+    check(`advanced to ${to}`, okRpc(r.status), r.text.slice(0, 120));
   }
   const complete = await rpc("transition_order_status", { p_actor: userA.id, p_order_id: lcId, p_to: "completed" });
-  check("ready → completed blocked until paid", complete.status !== 200, complete.text.slice(0, 140));
+  check("ready → completed blocked until paid", !okRpc(complete.status), complete.text.slice(0, 140));
 
   const history = await serviceSelect("order_status_history", `order_id=eq.${lcId}&select=to_status`);
   check("status history recorded", history.length >= 5, `got ${history.length}`);
@@ -436,7 +459,7 @@ try {
     },
   });
   const amRow = (await serviceSelect("orders", `id=eq.${amId}&select=*`))[0];
-  check("amend applied", amend.status === 200, amend.text.slice(0, 120));
+  check("amend applied", okRpc(amend.status), amend.text.slice(0, 120));
   // burger base 10000 * 2 = 20000; flat 1000; 5% on 19000 = 950; total 19950
   check("amend recomputed subtotal (200.00)", amRow?.subtotal_minor === 20000, `got ${amRow?.subtotal_minor}`);
   check("amend recomputed total (199.50)", amRow?.total_minor === 19950, `got ${amRow?.total_minor}`);
@@ -447,12 +470,12 @@ try {
     p_order_id: lcId,
     p_payload: { items: [{ item_type: "product", product_id: productFries, quantity: 3 }] },
   });
-  check("amending a ready order blocked", amendReady.status !== 200);
+  check("amending a ready order blocked", !okRpc(amendReady.status));
 
   // ── 6. service-role-only + tenant isolation ──────────────────────────────
   console.log("\n6 · security: RPCs are service_role-only; reads are tenant-isolated");
   const asUser = await rpc("create_pos_order", { p_actor: userA.id, p_payload: happyPayload }, { service: false, bearer: userA.token });
-  check("authenticated user cannot call create_pos_order", asUser.status !== 200, `status ${asUser.status}`);
+  check("authenticated user cannot call create_pos_order", !okRpc(asUser.status), `status ${asUser.status}`);
 
   const bReads = await got(`/rest/v1/orders?business_id=eq.${businessA}&select=id`, { bearer: userB.token });
   check("RLS hides tenant A orders from owner B", Array.isArray(bReads.json) && bReads.json.length === 0);

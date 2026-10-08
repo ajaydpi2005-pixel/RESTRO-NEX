@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { ChevronLeft, Plus, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +10,7 @@ import { ProductsTable } from "@/modules/menu/components/products-table";
 import { resolveMenuBusiness } from "@/modules/menu/context";
 import { loadCategoryTree, loadProducts, flatCategoryOptions } from "@/modules/menu/queries";
 import { productFiltersSchema } from "@/modules/menu/schemas";
+import { guardRedirect } from "@/lib/guarded-redirect";
 
 export const metadata: Metadata = { title: "Products" };
 
@@ -21,7 +21,7 @@ export default async function ProductsPage({
 }) {
   const params = await searchParams;
   const { withMenuView, business } = await resolveMenuBusiness(params.business);
-  if (withMenuView.length === 0) redirect("/settings");
+  if (withMenuView.length === 0) return await guardRedirect("/settings");
   if (!business) return <MenuBusinessPicker businesses={withMenuView} basePath="/menu/products" />;
 
   const abilities = await getViewerAbilities(business.id);

@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { findActiveMembership, getViewerAbilities } from "@/lib/rbac/enforce";
 import { OrdersBusinessPicker } from "@/modules/orders/components/business-picker";
@@ -14,6 +13,7 @@ import {
   loadPosOutlets,
   loadPosTables,
 } from "@/modules/orders/queries";
+import { guardRedirect } from "@/lib/guarded-redirect";
 
 export const metadata: Metadata = { title: "POS" };
 
@@ -24,7 +24,7 @@ export default async function PosPage({
 }) {
   const params = await searchParams;
   const { withOrdersView, business } = await resolveOrdersBusiness(params.business);
-  if (withOrdersView.length === 0) redirect("/settings");
+  if (withOrdersView.length === 0) return await guardRedirect("/settings");
   if (!business) return <OrdersBusinessPicker businesses={withOrdersView} basePath="/pos" />;
 
   const abilities = await getViewerAbilities(business.id);
@@ -40,7 +40,7 @@ export default async function PosPage({
   const membership = abilities.userId
     ? await findActiveMembership(abilities.userId, business.id)
     : null;
-  if (!membership) redirect("/settings");
+  if (!membership) return await guardRedirect("/settings");
 
   const outlets = await loadPosOutlets(business.id, membership.role, membership.id);
   if (outlets.length === 0) {

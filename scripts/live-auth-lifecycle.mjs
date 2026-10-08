@@ -213,7 +213,14 @@ try {
   const cookie = makeSessionCookies(`sb-${REF}-auth-token`, JSON.stringify(session));
 
   const dash = await fetch(`${APP}/dashboard`, { headers: { cookie }, redirect: "manual" });
-  check("/dashboard → 200 with valid session", dash.status === 200, `status ${dash.status}`);
+  // A fresh account is routed into onboarding (Phase 6); an onboarded one
+  // sees the dashboard directly. Both prove the session passed the guards.
+  const dashLoc = dash.headers.get("location") ?? "";
+  check(
+    "/dashboard → 200 with valid session",
+    dash.status === 200 || (dash.status >= 300 && dash.status < 400 && dashLoc.includes("/onboarding")),
+    `status ${dash.status} location ${dashLoc}`,
+  );
 
   const acct = await fetch(`${APP}/account`, { headers: { cookie }, redirect: "manual" });
   check("/account → 200 with valid session", acct.status === 200, `status ${acct.status}`);

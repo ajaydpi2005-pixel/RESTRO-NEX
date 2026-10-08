@@ -129,17 +129,33 @@ async function createConfirmedUser({ email, password }) {
   };
 }
 
-async function getActionFields(pageUrl, cookie) {
+
+function getFormsFromHtml(html) {
+  const forms = [];
+  for (const block of html.match(/<form\b[\s\S]*?<\/form>/g) ?? []) {
+    const actionFields = {};
+    for (const m of block.matchAll(/<input type="hidden" name="([^"]+)"(?: value="([^"]*)")?\/>/g)) {
+      const [, name, value] = m;
+      if (name.startsWith("$ACTION") || name === "businessId" || name === "outletId" || name === "token") {
+        actionFields[name] = (value ?? "").replace(/&quot;/g, '"');
+      }
+    }
+    forms.push({ html: block, actionFields });
+  }
+  return forms;
+}
+
+/**
+ * Menu pages render several action forms (create + per-row rename/delete,
+ * product editor + overrides + attach + delete). Each form carries its own
+ * $ACTION_REF; mixing refs across forms produces undecodable submissions.
+ */
+async function pickFormFields(pageUrl, cookie, ...needles) {
   const res = await fetch(pageUrl, { headers: { cookie }, redirect: "manual" });
   const html = await res.text();
-  const fields = {};
-  for (const m of html.matchAll(/<input type="hidden" name="([^"]+)"(?: value="([^"]*)")?\/>/g)) {
-    const [, name, value] = m;
-    if (name.startsWith("$ACTION") || name === "businessId" || name === "productId" || name === "groupId" || name === "comboId") {
-      fields[name] = (value ?? "").replace(/&quot;/g, '"');
-    }
-  }
-  return { fields, html, status: res.status };
+  const forms = getFormsFromHtml(html);
+  const form = forms.find((f) => needles.every((n) => f.html.includes(n)));
+  return { fields: form?.actionFields ?? {}, html, status: res.status };
 }
 
 async function postAction(pageUrl, cookie, fields, entries) {
@@ -198,11 +214,18 @@ try {
   });
   businessA = typeof rpcA.json === "string" ? rpcA.json : null;
   businessB = typeof rpcB.json === "string" ? rpcB.json : null;
-  for (const [biz, slug] of [[businessA, "menu-a"], [businessB, "menu-b"]]) {
+  for (const [biz, tag] of [[businessA, "a"], [businessB, "b"]]) {
     await got("/rest/v1/outlets", {
       method: "POST",
       service: true,
-      body: { business_id: biz, name: `${slug} main`, slug, status: "active" },
+      body: {
+        business_id: biz,
+        name: `menu-${tag} main`,
+        slug: `menu-${tag}-${ts}`,
+        code: `M${tag.toUpperCase()}${String(ts).slice(-6)}`,
+        currency_code: "INR",
+        status: "active",
+      },
     });
   }
   outletA = (await serviceSelect("outlets", `business_id=eq.${businessA}&select=id`))[0]?.id ?? null;
@@ -210,7 +233,7 @@ try {
 
   // ── 1. categories + subcategories ─────────────────────────────────────────
   console.log("\n1 · categories");
-  const catPage = await getActionFields(`${APP}/menu/categories?business=${businessA}`, userA.cookie);
+  const catPage = await pickFormFields(`${APP}/menu/categories?business=${businessA}`, userA.cookie, `name="parentId"`, `name="name"`);
   const catPost = await postAction(`${APP}/menu/categories?business=${businessA}`, userA.cookie, catPage.fields, {
     businessId: businessA,
     name: `E2E Starters ${ts}`,
@@ -219,7 +242,7 @@ try {
   categoryId = extractId(catPost.text, "categoryId");
   check("category created via server action", Boolean(categoryId));
 
-  const subPage = await getActionFields(`${APP}/menu/categories?business=${businessA}`, userA.cookie);
+  const subPage = await pickFormFields(`${APP}/menu/categories?business=${businessA}`, userA.cookie, `name="parentId"`, `name="name"`);
   const subPost = await postAction(`${APP}/menu/categories?business=${businessA}`, userA.cookie, subPage.fields, {
     businessId: businessA,
     name: "Soups",
@@ -231,7 +254,7 @@ try {
 
   // ── 2. product with SKU, tax, variants ────────────────────────────────────
   console.log("\n2 · product + variants");
-  const newPage = await getActionFields(`${APP}/menu/products/new?business=${businessA}`, userA.cookie);
+  const newPage = await pickFormFields(`${APP}/menu/products/new?business=${businessA}`, userA.cookie, `name="sku"`, `name="price"`);
   const prodPost = await postAction(`${APP}/menu/products/new?business=${businessA}`, userA.cookie, newPage.fields, {
     businessId: businessA,
     name: `E2E Biryani ${ts}`,
@@ -252,7 +275,7 @@ try {
     JSON.stringify(prodRow),
   );
 
-  const editPage = await getActionFields(`${APP}/menu/products/${productId}?business=${businessA}`, userA.cookie);
+  const editPage = await pickFormFields(`${APP}/menu/products/${productId}?business=${businessA}`, userA.cookie, `name="sku"`, `name="productId"`);
   const editPost = await postAction(`${APP}/menu/products/${productId}?business=${businessA}`, userA.cookie, editPage.fields, {
     businessId: businessA,
     productId,
@@ -279,7 +302,8 @@ try {
 
   // ── 3. outlet pricing + availability ──────────────────────────────────────
   console.log("\n3 · outlet overrides");
-  const overridePost = await postAction(`${APP}/menu/products/${productId}?business=${businessA}`, userA.cookie, editPage.fields, {
+  const overridePage = await pickFormFields(`${APP}/menu/products/${productId}?business=${businessA}`, userA.cookie, `name="overridePrice"`);
+  const overridePost = await postAction(`${APP}/menu/products/${productId}?business=${businessA}`, userA.cookie, overridePage.fields, {
     businessId: businessA,
     productId,
     overrideOutletId: [outletA],
@@ -296,7 +320,7 @@ try {
 
   // ── 4. modifier groups + attach ───────────────────────────────────────────
   console.log("\n4 · modifiers & add-ons");
-  const modPage = await getActionFields(`${APP}/menu/modifiers?business=${businessA}`, userA.cookie);
+  const modPage = await pickFormFields(`${APP}/menu/modifiers?business=${businessA}`, userA.cookie, `name="minSelected"`);
   const modPost = await postAction(`${APP}/menu/modifiers?business=${businessA}`, userA.cookie, modPage.fields, {
     businessId: businessA,
     name: `E2E Spice Level ${ts}`,
@@ -311,7 +335,7 @@ try {
   const modifiers = await serviceSelect("modifiers", `modifier_group_id=eq.${groupId}&select=name,price_minor`);
   check("two options persisted", modifiers.length === 2 && modifiers.some((m) => m.price_minor === 1000));
 
-  const attachPage = await getActionFields(`${APP}/menu/products/${productId}?business=${businessA}`, userA.cookie);
+  const attachPage = await pickFormFields(`${APP}/menu/products/${productId}?business=${businessA}`, userA.cookie, `name="groupId"`);
   await postAction(`${APP}/menu/products/${productId}?business=${businessA}`, userA.cookie, attachPage.fields, {
     businessId: businessA,
     productId,
@@ -322,7 +346,7 @@ try {
 
   // ── 5. combo ──────────────────────────────────────────────────────────────
   console.log("\n5 · combo");
-  const comboPage = await getActionFields(`${APP}/menu/combos/new?business=${businessA}`, userA.cookie);
+  const comboPage = await pickFormFields(`${APP}/menu/combos/new?business=${businessA}`, userA.cookie, `name="comboProductId"`);
   const comboPost = await postAction(`${APP}/menu/combos/new?business=${businessA}`, userA.cookie, comboPage.fields, {
     businessId: businessA,
     name: `E2E Feast ${ts}`,
@@ -343,7 +367,7 @@ try {
 
   // ── 6. bulk availability ──────────────────────────────────────────────────
   console.log("\n6 · bulk operations");
-  const listPage = await getActionFields(`${APP}/menu/products?business=${businessA}`, userA.cookie);
+  const listPage = await pickFormFields(`${APP}/menu/products?business=${businessA}`, userA.cookie, `name="bulkMode"`);
   await postAction(`${APP}/menu/products?business=${businessA}`, userA.cookie, listPage.fields, {
     businessId: businessA,
     bulkMode: "unavailable",
@@ -356,7 +380,7 @@ try {
   console.log("\n7 · tenant isolation");
 
   // owner B tries to create a product in tenant A's business
-  const attackPage = await getActionFields(`${APP}/menu/products/new?business=${businessA}`, userB.cookie);
+  const attackPage = await pickFormFields(`${APP}/menu/products/new?business=${businessA}`, userB.cookie, `name="sku"`, `name="price"`);
   const attackFields = Object.fromEntries(Object.entries(attackPage.fields).filter(([k]) => k.startsWith("$ACTION")));
   const attack = await postAction(`${APP}/menu/products/new?business=${businessA}`, userB.cookie, attackFields, {
     businessId: businessA,
@@ -372,7 +396,8 @@ try {
   const forged = await serviceSelect("menu_items", `business_id=eq.${businessA}&name=eq.Forged product&select=id`);
   check(
     "owner B cannot create products in tenant A",
-    forged.length === 0 && /access|permission|found/i.test(attack.text),
+    forged.length === 0 && /access|permission|found|invalid/i.test(attack.text) && attack.status !== 200,
+    `status ${attack.status}`,
   );
 
   // owner B tries to delete tenant A's product
@@ -382,7 +407,11 @@ try {
     bulkMode: "delete",
   });
   const stillAlive = await serviceSelect("menu_items", `id=eq.${productId}&select=id`);
-  check("owner B cannot delete tenant A's product", stillAlive.length === 1 && delAttack.status === 200);
+  check(
+    "owner B cannot delete tenant A's product",
+    stillAlive.length === 1 && delAttack.status !== 200,
+    `status ${delAttack.status}`,
+  );
 
   // RLS read isolation with B's own JWT
   const bReads = await got(

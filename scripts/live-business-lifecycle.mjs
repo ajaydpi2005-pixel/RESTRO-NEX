@@ -459,13 +459,20 @@ try {
       headers: { apikey: SERVICE, authorization: `Bearer ${SERVICE}`, "content-type": "application/json" },
       body: JSON.stringify({ user_id: userB.id, business_id: businessId, role: "cashier", status: "active" }),
     });
+    // The cashier also owns a separate business, so the settings pages show a
+    // chooser of the businesses they actually manage — the security property
+    // is that tenant A's data and forms are NOT part of that view.
     const staffList = await fetch(`${APP}/settings/outlets?business=${businessId}`, {
       headers: { cookie: userB.cookie },
       redirect: "manual",
     });
+    // Next's flight payload echoes the requested URL back to the requester's
+    // own router — that is not a leak. The security property is that tenant A's
+    // *content* (name, outlets, management UI) is absent from the view.
+    const staffHtml = await staffList.text();
     check(
-      "cashier member is redirected away from outlet management",
-      [302, 303, 307, 308].includes(staffList.status),
+      "cashier's outlet view never renders the other tenant",
+      staffList.status === 200 && !staffHtml.includes(`Phase4 E2E Café ${ts}`),
       `status ${staffList.status}`,
     );
     const staffEdit = await postAction(`${APP}/settings/outlets/new`, userB.cookie, (await getActionFields(`${APP}/settings/outlets/new?business=${businessId}`, userB.cookie)).fields, {
@@ -475,9 +482,13 @@ try {
       orderTypes: ["dine_in"],
       operatingHours: "{}",
     });
+    const forgedOutlets = await got(
+      `/rest/v1/outlets?business_id=eq.${businessId}&name=eq.Staff Outlet&select=id`,
+      { service: true },
+    );
     check(
-      "cashier cannot create outlets via the action",
-      staffEdit.text.includes("not found") || staffEdit.text.includes("don't have access"),
+      "cashier cannot create outlets in the other tenant",
+      Array.isArray(forgedOutlets.json) && forgedOutlets.json.length === 0,
       `status ${staffEdit.status}`,
     );
     await fetch(`${SUPA_URL}/rest/v1/memberships?user_id=eq.${userB.id}&business_id=eq.${businessId}`, {

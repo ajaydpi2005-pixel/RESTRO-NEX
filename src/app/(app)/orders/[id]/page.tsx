@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -18,6 +18,7 @@ import {
   type OrderType,
 } from "@/modules/orders/state";
 import { cn } from "@/lib/utils";
+import { guardRedirect } from "@/lib/guarded-redirect";
 
 export const metadata: Metadata = { title: "Order" };
 
@@ -31,7 +32,7 @@ export default async function OrderDetailPage({
   const { id } = await params;
   const search = await searchParams;
   const { withOrdersView, business } = await resolveOrdersBusiness(search.business);
-  if (withOrdersView.length === 0) redirect("/settings");
+  if (withOrdersView.length === 0) return await guardRedirect("/settings");
   if (!business) return <OrdersBusinessPicker businesses={withOrdersView} basePath="/orders" />;
 
   const abilities = await getViewerAbilities(business.id);

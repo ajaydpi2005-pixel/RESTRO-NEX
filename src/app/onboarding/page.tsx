@@ -1,6 +1,6 @@
-import { redirect } from "next/navigation";
 import { getOnboardingContext } from "@/modules/onboarding/queries";
 import { nextIncompleteStep } from "@/modules/onboarding/steps";
+import { guardRedirect } from "@/lib/guarded-redirect";
 
 /**
  * /onboarding — resume point. Picks the business still mid-setup and sends
@@ -10,12 +10,12 @@ export default async function OnboardingEntryPage() {
   const context = await getOnboardingContext();
 
   if (!context.business) {
-    redirect("/onboarding/business");
+    return await guardRedirect("/onboarding/business");
   }
   if (context.progress?.completedAt) {
-    redirect("/dashboard");
+    return await guardRedirect("/dashboard");
   }
 
   const completed = context.progress?.completedSteps ?? [];
-  redirect(`/onboarding/${nextIncompleteStep(completed)}`);
+  return await guardRedirect(`/onboarding/${nextIncompleteStep(completed)}`);
 }

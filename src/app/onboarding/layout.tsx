@@ -1,19 +1,20 @@
 import type { ReactNode } from "react";
-import { redirect } from "next/navigation";
+import { connection } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getSupabaseEnv } from "@/lib/env";
+import { guardRedirect } from "@/lib/guarded-redirect";
 
 /**
  * Phase 6 — Onboarding is an immersive full-screen wizard (no app shell nav):
  * one task at a time until the restaurant is set up.
  */
-export const instant = false;
 
 export default async function OnboardingLayout({ children }: { children: ReactNode }) {
+  await connection();
   try {
     getSupabaseEnv();
   } catch {
-    redirect("/");
+    return await guardRedirect("/");
   }
 
   const supabase = await createClient();
@@ -22,7 +23,7 @@ export default async function OnboardingLayout({ children }: { children: ReactNo
   } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect("/login?next=/onboarding");
+    return await guardRedirect("/login?next=/onboarding");
   }
 
   return <>{children}</>;

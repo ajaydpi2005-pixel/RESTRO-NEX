@@ -7,9 +7,9 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { ROLE_META, isRole } from "@/lib/rbac/permissions";
 import { AcceptInviteForm } from "@/modules/onboarding/components/accept-invite-form";
+import { connection } from "next/server";
 
 export const metadata: Metadata = { title: "Join a restaurant" };
-export const instant = false;
 
 /** Wall-clock check kept out of render scope (React purity rules). */
 function isPastIso(iso: string): boolean {
@@ -24,6 +24,7 @@ function isPastIso(iso: string): boolean {
  * which re-validates everything atomically.
  */
 export default async function InvitePage({ params }: { params: Promise<{ token: string }> }) {
+  await connection();
   const { token } = await params;
   const admin = createAdminClient();
 

@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,6 +11,7 @@ import { getManagedBusinesses } from "@/modules/business/queries";
 import { AddStaffForm } from "@/modules/staff/components/add-staff-form";
 import { StaffMemberCard } from "@/modules/staff/components/staff-member-card";
 import { getStaffList } from "@/modules/staff/queries";
+import { guardRedirect } from "@/lib/guarded-redirect";
 
 export const metadata: Metadata = { title: "Staff" };
 
@@ -25,7 +25,7 @@ export default async function StaffPage({
   const withStaffView = businesses.filter((b) => hasPermission(b.role, "staff.view"));
 
   if (withStaffView.length === 0) {
-    redirect("/settings");
+    return await guardRedirect("/settings");
   }
 
   const business = params.business

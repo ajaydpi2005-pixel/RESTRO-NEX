@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,6 +9,7 @@ import { MenuBusinessPicker } from "@/modules/menu/components/business-gate";
 import { ModifierGroupForm } from "@/modules/menu/components/modifier-group-form";
 import { resolveMenuBusiness } from "@/modules/menu/context";
 import { loadModifierGroupDetail } from "@/modules/menu/queries";
+import { guardRedirect } from "@/lib/guarded-redirect";
 
 export const metadata: Metadata = { title: "Edit modifier group" };
 
@@ -22,7 +23,7 @@ export default async function EditModifierGroupPage({
   const { id } = await params;
   const query = await searchParams;
   const { withMenuView, business } = await resolveMenuBusiness(query.business);
-  if (withMenuView.length === 0) redirect("/settings");
+  if (withMenuView.length === 0) return await guardRedirect("/settings");
   if (!business) return <MenuBusinessPicker businesses={withMenuView} basePath={`/menu/modifiers/${id}`} />;
 
   const abilities = await getViewerAbilities(business.id);

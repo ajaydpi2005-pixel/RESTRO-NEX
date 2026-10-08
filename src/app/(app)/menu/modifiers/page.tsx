@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,6 +9,7 @@ import { ModifierGroupDelete } from "@/modules/menu/components/modifier-group-de
 import { ModifierGroupForm } from "@/modules/menu/components/modifier-group-form";
 import { resolveMenuBusiness } from "@/modules/menu/context";
 import { loadModifierGroups } from "@/modules/menu/queries";
+import { guardRedirect } from "@/lib/guarded-redirect";
 
 export const metadata: Metadata = { title: "Modifiers & add-ons" };
 
@@ -20,7 +20,7 @@ export default async function ModifiersPage({
 }) {
   const params = await searchParams;
   const { withMenuView, business } = await resolveMenuBusiness(params.business);
-  if (withMenuView.length === 0) redirect("/settings");
+  if (withMenuView.length === 0) return await guardRedirect("/settings");
   if (!business) return <MenuBusinessPicker businesses={withMenuView} basePath="/menu/modifiers" />;
 
   const abilities = await getViewerAbilities(business.id);
