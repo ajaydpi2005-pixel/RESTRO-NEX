@@ -59,3 +59,6 @@ $PSQL -f scripts/local-pg/assertions-phase4.sql
 
 echo "→ Running RBAC assertions (Phase 5)"
 $PSQL -f scripts/local-pg/assertions-phase5.sql
+
+echo "→ Running onboarding assertions (Phase 6)"
+$PSQL -f scripts/local-pg/assertions-phase6.sql
