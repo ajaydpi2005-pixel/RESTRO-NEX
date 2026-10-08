@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import {
   BarChart3,
+  Armchair,
   BookOpen,
   Boxes,
   ChefHat,
@@ -36,6 +37,7 @@ import { cn } from "@/lib/utils";
 const moduleIcons: Record<AppPath, LucideIcon> = {
   "/dashboard": LayoutDashboard,
   "/pos": ReceiptText,
+  "/floor": Armchair,
   "/kitchen": ChefHat,
   "/menu": BookOpen,
   "/inventory": Boxes,

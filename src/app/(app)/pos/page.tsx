@@ -20,7 +20,7 @@ export const metadata: Metadata = { title: "POS" };
 export default async function PosPage({
   searchParams,
 }: {
-  searchParams: Promise<{ business?: string; outlet?: string; order?: string }>;
+  searchParams: Promise<{ business?: string; outlet?: string; order?: string; table?: string }>;
 }) {
   const params = await searchParams;
   const { withOrdersView, business } = await resolveOrdersBusiness(params.business);
@@ -122,6 +122,11 @@ export default async function PosPage({
         resume={
           resume && params.order
             ? { orderId: params.order, ...resume }
+            : null
+        }
+        preselectTableId={
+          !resume && params.table && tables.some((t) => t.id === params.table)
+            ? params.table
             : null
         }
       />

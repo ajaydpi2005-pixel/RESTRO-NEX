@@ -68,3 +68,6 @@ $PSQL -f scripts/local-pg/assertions-phase7.sql
 
 echo "→ Running POS + order management assertions (Phase 8)"
 $PSQL -f scripts/local-pg/assertions-phase8.sql
+
+echo "→ Running floor + table lifecycle assertions (Phase 9)"
+$PSQL -f scripts/local-pg/assertions-phase9.sql

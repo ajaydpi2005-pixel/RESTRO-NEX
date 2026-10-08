@@ -117,6 +117,7 @@ scripts/
 | `/signup`    | Registration entry                       | Phase 3           |
 | `/dashboard` | Owner dashboard                          | Phases 6 → 16     |
 | `/pos`       | Point of sale                            | Phase 8           |
+| `/floor`     | Floors, tables, reservations, bill moves | Phase 9           |
 | `/kitchen`   | Kitchen Display System                   | Phase 11          |
 | `/menu`      | Universal menu management                | Phase 7           |
 | `/inventory` | Recipes + inventory                      | Phase 13          |

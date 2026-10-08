@@ -10,6 +10,7 @@
 export type AppPath =
   | "/dashboard"
   | "/pos"
+  | "/floor"
   | "/kitchen"
   | "/menu"
   | "/inventory"
@@ -61,6 +62,21 @@ export const appModules: AppModule[] = [
       "Discounts, coupons, taxes, service and packaging charges",
       "Cash, UPI, card and split or partial payments",
       "Receipts, invoices, KOTs, reprints and refunds",
+    ],
+  },
+  {
+    path: "/floor",
+    title: "Floor",
+    description: "Live dining room: floors, sections, tables, reservations and dine-in bills.",
+    phase: 9,
+    phaseName: "Dining Tables + Floor Management",
+    planned: [
+      "Floors, sections and tables with capacity",
+      "Live table status: available, reserved, occupied",
+      "Seat guests straight into the POS",
+      "Reserve and release tables with notes",
+      "Transfer, merge and split dine-in bills",
+      "Complete tables once the bill is settled",
     ],
   },
   {
@@ -157,7 +173,7 @@ export const appModules: AppModule[] = [
 /** Sidebar groupings for the restaurant application shell. */
 export const appNavGroups: { label: string; paths: AppPath[] }[] = [
   { label: "Overview", paths: ["/dashboard"] },
-  { label: "Operations", paths: ["/pos", "/kitchen", "/menu"] },
+  { label: "Operations", paths: ["/pos", "/floor", "/kitchen", "/menu"] },
   { label: "Management", paths: ["/inventory", "/customers"] },
   { label: "Insights", paths: ["/reports"] },
   { label: "System", paths: ["/settings"] },

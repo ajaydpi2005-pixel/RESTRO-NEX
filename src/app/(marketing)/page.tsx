@@ -3,6 +3,7 @@ import {
   Activity,
   ArrowRight,
   BarChart3,
+  Armchair,
   BookOpen,
   Boxes,
   Building2,
@@ -25,6 +26,7 @@ import { siteConfig } from "@/config/site";
 const moduleIcons: Record<AppPath, LucideIcon> = {
   "/dashboard": LayoutDashboard,
   "/pos": ReceiptText,
+  "/floor": Armchair,
   "/kitchen": ChefHat,
   "/menu": BookOpen,
   "/inventory": Boxes,

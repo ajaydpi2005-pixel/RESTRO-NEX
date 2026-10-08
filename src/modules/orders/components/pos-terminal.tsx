@@ -73,6 +73,8 @@ export interface PosTerminalProps {
   canManage: boolean;
   canDiscount: boolean;
   resume: ResumeOrderData | null;
+  /** Floor page deep-link: seat this table for a new dine-in order. */
+  preselectTableId?: string | null;
 }
 
 interface CartLine {
@@ -133,6 +135,7 @@ export function PosTerminal(props: PosTerminalProps) {
     canManage,
     canDiscount,
     resume,
+    preselectTableId,
   } = props;
 
   // ── cart + order form state ──────────────────────────────────────────────
@@ -145,9 +148,13 @@ export function PosTerminal(props: PosTerminalProps) {
     if (resume) return (["dine_in", "takeaway", "delivery"].includes(resume.orderType)
       ? resume.orderType
       : "takeaway") as OrderType;
+    if (preselectTableId) return "dine_in";
     return tables.length > 0 ? "dine_in" : "takeaway";
   });
-  const [tableId, setTableId] = React.useState<string>(resume?.tableId ?? "");
+  const [tableId, setTableId] = React.useState<string>(
+    resume?.tableId ?? preselectTableId ?? "",
+  );
+  const tableLocked = Boolean(preselectTableId) && !resume;
   const [customerName, setCustomerName] = React.useState(resume?.customerName ?? "");
   const [customerPhone, setCustomerPhone] = React.useState(resume?.customerPhone ?? "");
   const [deliveryAddress, setDeliveryAddress] = React.useState(resume?.deliveryAddress ?? "");
@@ -594,6 +601,7 @@ export function PosTerminal(props: PosTerminalProps) {
               type="button"
               role="tab"
               aria-selected={orderType === t}
+              disabled={tableLocked}
               onClick={() => setOrderType(t)}
               className={cn(
                 "flex h-9 items-center justify-center gap-1 rounded-md text-xs font-medium transition",
@@ -610,7 +618,13 @@ export function PosTerminal(props: PosTerminalProps) {
         {orderType === "dine_in" ? (
           <div className="space-y-1">
             <Label htmlFor="pos-table">Table</Label>
-            <Select id="pos-table" value={tableId} onChange={(e) => setTableId(e.target.value)} className="h-10">
+            <Select
+              id="pos-table"
+              value={tableId}
+              onChange={(e) => setTableId(e.target.value)}
+              disabled={tableLocked}
+              className="h-10"
+            >
               <option value="">Select a table…</option>
               {tableSections.map(([section, list]) => (
                 <optgroup key={section} label={section}>
@@ -622,6 +636,11 @@ export function PosTerminal(props: PosTerminalProps) {
                 </optgroup>
               ))}
             </Select>
+            {tableLocked ? (
+              <p className="text-xs text-muted-foreground">
+                Seated from the floor view — the table is fixed for this order.
+              </p>
+            ) : null}
           </div>
         ) : null}
 
