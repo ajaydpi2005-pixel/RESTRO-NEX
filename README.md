@@ -15,8 +15,9 @@ customers and multi-outlet management — on one platform with strictly isolated
 | ----- | ---------------------------------- | --------------- |
 | 0     | Project Foundation                 | ✅ Complete     |
 | 1     | Supabase + Database Foundation     | ✅ Complete     |
-| 2     | Multi-Tenant Architecture + RLS    | Next up         |
-| 3–25  | See `docs/MASTER_SPEC.md` §43      | Roadmap         |
+| 2     | Multi-Tenant Architecture + RLS    | ✅ Complete     |
+| 3     | Authentication                     | Next up         |
+| 4–25  | See `docs/MASTER_SPEC.md` §43      | Roadmap         |
 
 ## Tech stack
 
@@ -89,7 +90,8 @@ src/
 ├── lib/
 │   ├── env.ts              # Zod-validated environment contract
 │   ├── utils.ts            # cn() class merge helper
-│   └── supabase/           # client.ts (browser) · server.ts · admin.ts
+│   ├── supabase/           # client.ts (browser) · server.ts · admin.ts
+│   └── tenancy/            # Server-side tenant/outlet resolution (see docs/TENANCY.md)
 └── app/api/health/         # Honest DB connectivity probe
 
 supabase/
@@ -150,10 +152,14 @@ See `.env.example`; the step-by-step Supabase walkthrough lives in
 `SUPABASE_SERVICE_ROLE_KEY`. Server-only secrets must never carry the `NEXT_PUBLIC_` prefix, and
 the service-role key is only ever read by `src/lib/supabase/admin.ts` in server code.
 
-## Multi-tenancy & security posture (design commitments)
+## Multi-tenancy & security posture
 
-- Tenant isolation at frontend, server and database layers (PostgreSQL RLS from Phase 2).
-- Nothing client-supplied is trusted: tenant ids, roles, prices, taxes, discounts and
-  payment statuses are validated server-side.
+- Tenant isolation at frontend, server and database layers (PostgreSQL RLS).
+  The full model is documented in [`docs/TENANCY.md`](docs/TENANCY.md).
+- Nothing client-supplied is trusted: tenant ids, roles, prices, taxes,
+  discounts and payment statuses are validated server-side. Server flows
+  resolve selections via `src/lib/tenancy` (`resolveTenantSelection`).
+- Outlet-level access: `owner`/`business_admin` imply all outlets; other
+  roles need explicit grants (`membership_outlets`).
 - Money handled in integer minor units; ledgers (inventory, loyalty, audit) are append-only.
 - Super Admin is a separately protected surface, never granted via public sign-up.

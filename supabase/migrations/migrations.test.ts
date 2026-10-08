@@ -79,6 +79,21 @@ describe("supabase migrations", () => {
     expect(sql).toContain("menu-media");
     expect(sql).toContain("business-assets");
   });
+
+  it("adds outlet-level access control (Phase 2)", () => {
+    const sql = all();
+    expect(sql).toContain("create table public.membership_outlets");
+    expect(sql).toContain("alter table public.membership_outlets enable row level security");
+    expect(sql).toContain("function public.has_outlet_access");
+    expect(sql).toContain("function public.accessible_outlet_ids");
+  });
+
+  it("keeps outlet grants free of client-writable policies", () => {
+    const sql = all();
+    // Only the SELECT policy may reference the grants table.
+    expect(sql).toContain("membership_outlets_select_member");
+    expect(sql).not.toMatch(/on public\.membership_outlets for (insert|update|delete)/);
+  });
 });
 
 describe("development seed", () => {

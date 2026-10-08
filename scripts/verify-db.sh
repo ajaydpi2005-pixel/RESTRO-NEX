@@ -45,5 +45,8 @@ done
 echo "→ Applying seed"
 $PSQL -f supabase/seed.sql
 
-echo "→ Running security & isolation assertions"
+echo "→ Running security & isolation assertions (Phase 1)"
 $PSQL -f scripts/local-pg/assertions.sql
+
+echo "→ Running outlet-access assertions (Phase 2)"
+$PSQL -f scripts/local-pg/assertions-phase2.sql
