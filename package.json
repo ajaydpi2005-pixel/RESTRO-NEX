@@ -17,7 +17,8 @@
     "db:stop": "supabase stop",
     "db:status": "supabase status",
     "db:reset": "supabase db reset",
-    "db:verify": "bash scripts/verify-db.sh"
+    "db:verify": "bash scripts/verify-db.sh",
+    "test:auth:e2e": "node scripts/live-auth-lifecycle.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",

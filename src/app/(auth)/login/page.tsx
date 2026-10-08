@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { SignInForm } from "@/modules/auth/components/sign-in-form";
+import { sanitizeNext } from "@/modules/auth/schemas";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 export const metadata: Metadata = {
@@ -9,32 +8,30 @@ export const metadata: Metadata = {
   description: "Sign in to your RestroNex restaurant workspace.",
 };
 
-export default function LoginPage() {
+/** Reads `searchParams` (next/error) — blocking route, not a static shell. */
+export const instant = false;
+
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ next?: string; error?: string }>;
+}) {
+  const params = await searchParams;
+  const next = sanitizeNext(params.next);
+
   return (
     <Card>
       <CardHeader>
-        <Badge variant="outline" className="mb-2 w-fit border-gold/50">
-          Phase 3 — Authentication
-        </Badge>
-        <CardTitle className="text-xl">Log in to RestroNex</CardTitle>
-        <CardDescription>
-          This is the entry point to your restaurant workspace. Authentication has not been built
-          yet — no accounts exist at this stage of the greenfield build.
-        </CardDescription>
+        <CardTitle className="text-xl">Welcome back</CardTitle>
+        <CardDescription>Sign in to your RestroNex workspace.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <p className="text-sm text-muted-foreground">
-          When Phase 3 ships, this page provides email login, session management, password
-          recovery and a path into business onboarding.
-        </p>
-        <div className="flex flex-col gap-2">
-          <Button asChild>
-            <Link href="/signup">Create an account instead</Link>
-          </Button>
-          <Button variant="ghost" asChild>
-            <Link href="/">Back to home</Link>
-          </Button>
-        </div>
+        {params.error ? (
+          <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2.5 text-sm text-destructive">
+            {params.error}
+          </div>
+        ) : null}
+        <SignInForm next={next} />
       </CardContent>
     </Card>
   );

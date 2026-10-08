@@ -104,3 +104,19 @@ bypass). Use it any time you change a migration.
 Deliberately deferred: roles/permissions tables (Phase 5), menu/order/inventory
 schemas (Phases 7+), storage object policies (with their features),
 subscriptions/entitlements (Phase 20).
+
+## Auth configuration (Phase 3)
+
+Applied via the Management API (`PATCH /v1/projects/<ref>/config/auth`) and
+verified server-side — these are NOT client-side conventions:
+
+| Setting              | Value                                                                | Why                                        |
+| -------------------- | -------------------------------------------------------------------- | ------------------------------------------ |
+| `password_min_length`| `8`                                                                  | matches client zod rules, enforced by GoTrue |
+| `mailer_autoconfirm` | `false`                                                              | email confirmation is mandatory            |
+| `site_url`           | `http://localhost:3000`                                              | default redirect target for email links    |
+| `uri_allow_list`     | `http://localhost:3000/auth/confirm,http://localhost:3000/reset-password,http://localhost:3000/**` | allow `emailRedirectTo` targets |
+
+When you deploy to a real domain, add that origin to `uri_allow_list` and set
+`site_url` accordingly, and configure a custom SMTP provider (the shared
+default sender is rate-limited — see `docs/AUTH.md`).

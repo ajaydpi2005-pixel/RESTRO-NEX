@@ -10,6 +10,7 @@ import {
   ChefHat,
   Globe,
   LayoutDashboard,
+  LogOut,
   Menu,
   ReceiptText,
   Settings2,
@@ -18,6 +19,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
+import { signOutAction } from "@/modules/auth/actions";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -112,7 +114,13 @@ function SidebarFooter({ onNavigate }: { onNavigate?: () => void }) {
  * Restaurant application shell: brand sidebar, topbar and mobile drawer.
  * Operational screens prioritise speed and clarity (spec §41).
  */
-export function AppShell({ children }: { children: React.ReactNode }) {
+export function AppShell({
+  children,
+  userEmail,
+}: {
+  children: React.ReactNode;
+  userEmail?: string | null;
+}) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const activeModule = getModuleByPath(pathname);
@@ -163,9 +171,25 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </Button>
             <ThemeToggle />
             <Separator orientation="vertical" className="mx-1 hidden h-6 sm:block" />
-            <Button variant="outline" size="sm" asChild>
-              <Link href="/login">Sign in</Link>
-            </Button>
+            {userEmail ? (
+              <div className="flex items-center gap-1.5">
+                <Button variant="ghost" size="sm" asChild className="max-w-44 text-muted-foreground">
+                  <Link href="/account" title={userEmail}>
+                    <span className="truncate">{userEmail}</span>
+                  </Link>
+                </Button>
+                <form action={signOutAction}>
+                  <Button type="submit" variant="outline" size="sm">
+                    <LogOut className="size-4" />
+                    <span className="hidden sm:inline">Sign out</span>
+                  </Button>
+                </form>
+              </div>
+            ) : (
+              <Button variant="outline" size="sm" asChild>
+                <Link href="/login">Sign in</Link>
+              </Button>
+            )}
           </div>
         </header>
 

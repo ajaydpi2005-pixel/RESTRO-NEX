@@ -103,7 +103,6 @@ try {
   }
   console.log("setup: all three users signed in with real JWTs\n");
 
-  const TENANT_A = "11111111-1111-4111-8111-111111111111";
   const TENANT_B = "22222222-2222-4222-8222-222222222222";
   const A_OUT1 = "33333333-3333-4333-8333-333333333331";
   const A_OUT2 = "33333333-3333-4333-8333-333333333332";
