@@ -17,9 +17,9 @@ export async function GET() {
 
   try {
     const admin = createAdminClient();
-    const { error } = await admin
-      .from("user_profiles")
-      .select("id", { head: true, count: "exact" });
+    // Real GET (not HEAD) so a missing table surfaces as an error instead of
+    // an empty response. limit(0) keeps the probe row-free.
+    const { error } = await admin.from("user_profiles").select("id").limit(0);
 
     if (error) {
       return NextResponse.json(

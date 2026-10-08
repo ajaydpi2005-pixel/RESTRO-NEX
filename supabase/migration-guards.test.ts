@@ -8,7 +8,7 @@ import { describe, expect, it } from "vitest";
  * verification (applying migrations + RLS assertions against a real
  * PostgreSQL) lives in scripts/verify-db.sh (`npm run db:verify`).
  */
-const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
+const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const migrationsDir = resolve(repoRoot, "supabase", "migrations");
 const files = existsSync(migrationsDir)
   ? readdirSync(migrationsDir).filter((f) => f.endsWith(".sql")).sort()
