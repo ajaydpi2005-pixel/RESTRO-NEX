@@ -5,14 +5,15 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getManagedBusinesses } from "@/modules/business/queries";
+import { hasPermission } from "@/lib/rbac/permissions";
 import { RESTAURANT_TYPE_LABELS } from "@/modules/business/schemas";
 
 export const metadata: Metadata = { title: "Businesses" };
 
 export default async function BusinessListPage() {
   const businesses = await getManagedBusinesses();
-  const owned = businesses.filter((b) => b.role === "owner");
-  const memberOnly = businesses.filter((b) => b.role !== "owner");
+  const owned = businesses.filter((b) => hasPermission(b.role, "settings.manage"));
+  const memberOnly = businesses.filter((b) => !hasPermission(b.role, "settings.manage"));
 
   return (
     <div className="space-y-6">

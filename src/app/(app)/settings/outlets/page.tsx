@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getManagedBusinesses, getOwnedOutlets, type OrderType } from "@/modules/business/queries";
 import { ORDER_TYPE_LABELS, WEEKDAYS } from "@/modules/business/schemas";
+import { hasPermission } from "@/lib/rbac/permissions";
 import { OutletStatusToggle } from "@/modules/business/components/outlet-status-toggle";
 
 export const metadata: Metadata = { title: "Outlets" };
@@ -28,7 +29,7 @@ export default async function OutletsPage({
 }) {
   const params = await searchParams;
   const businesses = await getManagedBusinesses();
-  const owned = businesses.filter((b) => b.role === "owner");
+  const owned = businesses.filter((b) => hasPermission(b.role, "outlets.manage"));
 
   if (owned.length === 0) {
     redirect("/settings/business");

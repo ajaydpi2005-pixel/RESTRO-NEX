@@ -5,6 +5,7 @@ import { ChevronLeft } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { OutletForm } from "@/modules/business/components/outlet-form";
 import { getManagedBusinesses } from "@/modules/business/queries";
+import { hasPermission } from "@/lib/rbac/permissions";
 
 export const metadata: Metadata = { title: "Add outlet" };
 
@@ -15,7 +16,7 @@ export default async function NewOutletPage({
 }) {
   const params = await searchParams;
   const businesses = await getManagedBusinesses();
-  const owned = businesses.filter((b) => b.role === "owner");
+  const owned = businesses.filter((b) => hasPermission(b.role, "outlets.manage"));
 
   if (owned.length === 0) {
     redirect("/settings/business");

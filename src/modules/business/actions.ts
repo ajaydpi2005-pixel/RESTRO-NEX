@@ -1,7 +1,7 @@
 "use server";
 
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
+import { getSessionUserId, PermissionError, permissionErrorMessage, requirePermission } from "@/lib/rbac/enforce";
 import {
   createBusinessSchema,
   createOutletSchema,
@@ -12,13 +12,13 @@ import {
 } from "@/modules/business/schemas";
 
 /**
- * Phase 4 — Business + Outlet server actions.
+ * Phase 4/5 — Business + Outlet server actions.
  *
- * Security model (spec §09, §12):
+ * Security model (spec §09, §11, §12):
  *  - The actor comes from the Supabase session — never from the request body.
  *  - All writes go through the service-role client; RLS intentionally has no
- *    client INSERT policies for tenants, and ownership is enforced HERE:
- *    only a user with an ACTIVE `owner` membership may create/edit/activate.
+ *    client INSERT policies for tenants, and authorisation is enforced HERE:
+ *    Phase 5's RBAC gate (requirePermission) decides who may do what.
  *  - Every input is zod-validated before touching the database.
  *  - Cross-tenant ids collapse into one generic "not found" message.
  */
@@ -43,31 +43,8 @@ function zodFieldErrors(error: import("zod").ZodError): Partial<Record<string, s
   return fieldErrors;
 }
 
-/** Session user id, or null when unauthenticated. */
-async function getSessionUserId(): Promise<string | null> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  return user?.id ?? null;
-}
-
-/**
- * Owner membership gate. Returns true only when the user holds an ACTIVE
- * `owner` membership for the business. Service-role reads bypass RLS, so
- * this explicit check is the enforcement point.
- */
-async function isOwner(userId: string, businessId: string): Promise<boolean> {
-  const admin = createAdminClient();
-  const { data, error } = await admin
-    .from("memberships")
-    .select("id")
-    .eq("user_id", userId)
-    .eq("business_id", businessId)
-    .eq("role", "owner")
-    .eq("status", "active")
-    .maybeSingle();
-  return !error && data !== null;
+function denied(error: unknown): BusinessActionState {
+  return { error: permissionErrorMessage(error) };
 }
 
 function collectForm(formData: FormData, arrayKeys: readonly string[] = []): Record<string, unknown> {
@@ -88,7 +65,6 @@ export async function createBusinessAction(
   if (!userId) {
     return { error: "Please sign in again." };
   }
-
   const parsed = createBusinessSchema.safeParse(collectForm(formData));
   if (!parsed.success) {
     return { fieldErrors: zodFieldErrors(parsed.error) };
@@ -125,11 +101,6 @@ export async function updateBusinessAction(
   _previous: BusinessActionState | undefined,
   formData: FormData,
 ): Promise<BusinessActionState> {
-  const userId = await getSessionUserId();
-  if (!userId) {
-    return { error: "Please sign in again." };
-  }
-
   const raw = collectForm(formData);
   const businessId = typeof raw["businessId"] === "string" ? raw["businessId"] : "";
   const parsed = createBusinessSchema.safeParse(raw);
@@ -137,8 +108,13 @@ export async function updateBusinessAction(
     return { fieldErrors: { ...(!businessId ? { businessId: ["Missing business."] } : {}), ...(parsed.success ? {} : zodFieldErrors(parsed.error)) } };
   }
 
-  if (!(await isOwner(userId, businessId))) {
-    return { error: NOT_FOUND_OR_FORBIDDEN };
+  try {
+    await requirePermission({ businessId, permission: "settings.manage" });
+  } catch (error) {
+    if (error instanceof PermissionError && error.code === "forbidden") {
+      return { error: "You don't have permission to edit business settings." };
+    }
+    return denied(error);
   }
 
   const input: CreateBusinessInput = parsed.data;
@@ -246,11 +222,6 @@ export async function createOutletAction(
   _previous: BusinessActionState | undefined,
   formData: FormData,
 ): Promise<BusinessActionState> {
-  const userId = await getSessionUserId();
-  if (!userId) {
-    return { error: "Please sign in again." };
-  }
-
   const raw = collectForm(formData, ["orderTypes"]);
   if (typeof raw["operatingHours"] === "string") {
     try {
@@ -265,8 +236,13 @@ export async function createOutletAction(
   }
   const { businessId, ...input } = parsed.data;
 
-  if (!(await isOwner(userId, businessId))) {
-    return { error: NOT_FOUND_OR_FORBIDDEN };
+  try {
+    await requirePermission({ businessId, permission: "outlets.manage" });
+  } catch (error) {
+    if (error instanceof PermissionError && error.code === "forbidden") {
+      return { error: "You don't have permission to manage outlets." };
+    }
+    return denied(error);
   }
 
   const result = await insertOutlet(businessId, input);
@@ -280,11 +256,6 @@ export async function updateOutletAction(
   _previous: BusinessActionState | undefined,
   formData: FormData,
 ): Promise<BusinessActionState> {
-  const userId = await getSessionUserId();
-  if (!userId) {
-    return { error: "Please sign in again." };
-  }
-
   const raw = collectForm(formData, ["orderTypes"]);
   if (typeof raw["operatingHours"] === "string") {
     try {
@@ -300,8 +271,16 @@ export async function updateOutletAction(
   const { outletId, ...input } = parsed.data;
 
   const businessId = await findOutletBusiness(outletId);
-  if (!businessId || !(await isOwner(userId, businessId))) {
+  if (!businessId) {
     return { error: NOT_FOUND_OR_FORBIDDEN };
+  }
+  try {
+    await requirePermission({ businessId, permission: "outlets.manage" });
+  } catch (error) {
+    if (error instanceof PermissionError && error.code === "forbidden") {
+      return { error: "You don't have permission to manage outlets." };
+    }
+    return denied(error);
   }
 
   const admin = createAdminClient();
@@ -338,11 +317,6 @@ export async function setOutletStatusAction(
   _previous: BusinessActionState | undefined,
   formData: FormData,
 ): Promise<BusinessActionState> {
-  const userId = await getSessionUserId();
-  if (!userId) {
-    return { error: "Please sign in again." };
-  }
-
   const parsed = setOutletStatusSchema.safeParse(collectForm(formData));
   if (!parsed.success) {
     return { fieldErrors: zodFieldErrors(parsed.error) };
@@ -350,8 +324,16 @@ export async function setOutletStatusAction(
   const { outletId, active } = parsed.data;
 
   const businessId = await findOutletBusiness(outletId);
-  if (!businessId || !(await isOwner(userId, businessId))) {
+  if (!businessId) {
     return { error: NOT_FOUND_OR_FORBIDDEN };
+  }
+  try {
+    await requirePermission({ businessId, permission: "outlets.manage" });
+  } catch (error) {
+    if (error instanceof PermissionError && error.code === "forbidden") {
+      return { error: "You don't have permission to manage outlets." };
+    }
+    return denied(error);
   }
 
   const admin = createAdminClient();

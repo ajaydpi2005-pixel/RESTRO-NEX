@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, Building2, Store } from "lucide-react";
+import { ArrowRight, Building2, Store, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getManagedBusinesses } from "@/modules/business/queries";
@@ -25,7 +25,7 @@ export default async function SettingsPage() {
         </p>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         <Card>
           <CardHeader>
             <div className="flex size-9 items-center justify-center rounded-lg bg-ink text-gold">
@@ -64,6 +64,26 @@ export default async function SettingsPage() {
               className="inline-flex items-center gap-1.5 text-sm font-medium text-gold-deep underline-offset-4 hover:underline dark:text-gold"
             >
               Manage outlets <ArrowRight className="size-4" />
+            </Link>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <div className="flex size-9 items-center justify-center rounded-lg bg-ink text-gold">
+              <Users className="size-4.5" />
+            </div>
+            <CardTitle className="text-base">Staff &amp; roles</CardTitle>
+            <CardDescription>
+              Assign roles, outlets and permissions. Enforced server-side on every operation.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Link
+              href="/settings/staff"
+              className="inline-flex items-center gap-1.5 text-sm font-medium text-gold-deep underline-offset-4 hover:underline dark:text-gold"
+            >
+              Manage staff <ArrowRight className="size-4" />
             </Link>
           </CardContent>
         </Card>

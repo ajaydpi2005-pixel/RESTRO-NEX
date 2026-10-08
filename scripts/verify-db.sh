@@ -56,3 +56,6 @@ $PSQL -f scripts/local-pg/security-matrix.sql
 
 echo "→ Running business/outlet management assertions (Phase 4)"
 $PSQL -f scripts/local-pg/assertions-phase4.sql
+
+echo "→ Running RBAC assertions (Phase 5)"
+$PSQL -f scripts/local-pg/assertions-phase5.sql

@@ -19,7 +19,8 @@
     "db:reset": "supabase db reset",
     "db:verify": "bash scripts/verify-db.sh",
     "test:auth:e2e": "node scripts/live-auth-lifecycle.mjs",
-    "test:business:e2e": "node scripts/live-business-lifecycle.mjs"
+    "test:business:e2e": "node scripts/live-business-lifecycle.mjs",
+    "test:rbac:e2e": "node scripts/live-rbac-lifecycle.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",

@@ -1,4 +1,6 @@
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { hasPermission, type Permission } from "@/lib/rbac/permissions";
 import type { OperatingHours } from "@/modules/business/schemas";
 
 /**
@@ -119,23 +121,31 @@ const BUSINESS_COLUMNS =
 const OUTLET_COLUMNS =
   "id, business_id, name, slug, code, status, email, phone, address_line1, address_line2, city, state, postal_code, country, order_types, operating_hours, timezone, currency_code";
 
-/** Full business details when the caller is an active OWNER, else null. */
-export async function getOwnedBusiness(businessId: string): Promise<BusinessDetail | null> {
+/** True when the session user holds `permission` in the business. */
+async function viewerHas(businessId: string, permission: Permission): Promise<boolean> {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return null;
+  if (!user) return false;
 
-  const { data: membership } = await supabase
+  // Authoritative read via the service client: the caller's RLS view could
+  // hide a membership row the server must still reason about.
+  const admin = createAdminClient();
+  const { data: membership } = await admin
     .from("memberships")
-    .select("id")
+    .select("role")
     .eq("user_id", user.id)
     .eq("business_id", businessId)
-    .eq("role", "owner")
     .eq("status", "active")
     .maybeSingle();
-  if (!membership) return null;
+  return Boolean(membership && hasPermission(membership.role, permission));
+}
+
+/** Full business details when the caller may manage settings, else null. */
+export async function getOwnedBusiness(businessId: string): Promise<BusinessDetail | null> {
+  if (!(await viewerHas(businessId, "settings.manage"))) return null;
+  const supabase = await createClient();
 
   const { data: row } = await supabase
     .from("businesses")
@@ -165,23 +175,10 @@ export async function getOwnedBusiness(businessId: string): Promise<BusinessDeta
   };
 }
 
-/** Outlets of a business when the caller is an active OWNER, else null. */
+/** Outlets of a business when the caller may manage outlets, else null. */
 export async function getOwnedOutlets(businessId: string): Promise<OutletDetail[] | null> {
+  if (!(await viewerHas(businessId, "outlets.manage"))) return null;
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return null;
-
-  const { data: membership } = await supabase
-    .from("memberships")
-    .select("id")
-    .eq("user_id", user.id)
-    .eq("business_id", businessId)
-    .eq("role", "owner")
-    .eq("status", "active")
-    .maybeSingle();
-  if (!membership) return null;
 
   const { data: rows, error } = await supabase
     .from("outlets")
