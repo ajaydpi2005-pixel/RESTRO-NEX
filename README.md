@@ -14,8 +14,9 @@ customers and multi-outlet management — on one platform with strictly isolated
 | Phase | Scope                              | Status          |
 | ----- | ---------------------------------- | --------------- |
 | 0     | Project Foundation                 | ✅ Complete     |
-| 1     | Supabase + Database Foundation     | Next up         |
-| 2–25  | See `docs/MASTER_SPEC.md` §43      | Roadmap         |
+| 1     | Supabase + Database Foundation     | ✅ Complete     |
+| 2     | Multi-Tenant Architecture + RLS    | Next up         |
+| 3–25  | See `docs/MASTER_SPEC.md` §43      | Roadmap         |
 
 ## Tech stack
 
@@ -28,14 +29,16 @@ customers and multi-outlet management — on one platform with strictly isolated
 | Icons       | lucide-react                                            |
 | Theming     | next-themes (class-based light/dark)                    |
 | Validation  | Zod v4                                                  |
-| Testing     | Vitest                                                  |
+| Database    | Supabase (PostgreSQL 15+, RLS, Storage) — migrations in `supabase/` |
+| Testing     | Vitest + offline Postgres RLS harness (`npm run db:verify`) |
 | Lint/format | ESLint 9 (flat config) + Prettier + tailwind plugin     |
 
 ## Getting started
 
 ```bash
 npm install
-cp .env.example .env.local   # values are optional until Phase 1
+cp .env.example .env.local   # add Supabase keys — docs/SUPABASE_SETUP.md
+npm run env:check            # verify configuration
 npm run dev                  # http://localhost:3000
 ```
 
@@ -52,6 +55,10 @@ npm run dev                  # http://localhost:3000
 | `npm run test:watch`    | Vitest watch mode                |
 | `npm run format`        | Prettier write                   |
 | `npm run format:check`  | Prettier verify                  |
+| `npm run env:check`     | Report env configuration (no values printed) |
+| `npm run db:start`      | Local Supabase stack (Docker)    |
+| `npm run db:reset`      | Re-apply migrations + seed locally |
+| `npm run db:verify`     | Offline migration + RLS assertion harness (no Docker) |
 
 ## Architecture
 
@@ -79,9 +86,21 @@ src/
 ├── config/
 │   ├── site.ts             # Brand copy & links (single source of truth)
 │   └── modules.ts          # Roadmap module registry feeding nav + placeholders
-└── lib/
-    ├── env.ts              # Zod-validated environment contract
-    └── utils.ts            # cn() class merge helper
+├── lib/
+│   ├── env.ts              # Zod-validated environment contract
+│   ├── utils.ts            # cn() class merge helper
+│   └── supabase/           # client.ts (browser) · server.ts · admin.ts
+└── app/api/health/         # Honest DB connectivity probe
+
+supabase/
+├── config.toml             # Supabase CLI project config
+├── migrations/             # Timestamped SQL migrations (the only way schema changes)
+└── seed.sql                # Platform seed (4 plans; no fake business data)
+
+scripts/
+├── check-env.mjs           # Env configuration report
+├── verify-db.sh            # Offline Postgres RLS verification harness
+└── local-pg/               # Supabase emulation + assertions for the harness
 ```
 
 ### Route map
@@ -125,9 +144,11 @@ information hierarchy, marketing favours brand experience.
 
 ## Environment variables
 
-See `.env.example`. All variables are optional in Phase 0; each later phase tightens the
-contract in `src/lib/env.ts` for the services it introduces. Server-only secrets must never
-carry the `NEXT_PUBLIC_` prefix.
+See `.env.example`; the step-by-step Supabase walkthrough lives in
+[`docs/SUPABASE_SETUP.md`](docs/SUPABASE_SETUP.md). From Phase 1, database code paths require
+`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` and the server-only
+`SUPABASE_SERVICE_ROLE_KEY`. Server-only secrets must never carry the `NEXT_PUBLIC_` prefix, and
+the service-role key is only ever read by `src/lib/supabase/admin.ts` in server code.
 
 ## Multi-tenancy & security posture (design commitments)
 
