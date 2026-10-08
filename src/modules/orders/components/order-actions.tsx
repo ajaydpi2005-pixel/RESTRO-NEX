@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { transitionOrder } from "@/modules/orders/actions";
 import { allowedTransitions, type OrderState } from "@/modules/orders/state";
-import { PAYMENT_COLLECTION_AVAILABLE } from "@/modules/orders/payment-recording";
+import { PAYMENT_COLLECTION_AVAILABLE } from "@/modules/payments/availability";
 
 const TRANSITION_LABELS: Partial<Record<OrderState, string>> = {
   held: "Hold",
@@ -22,8 +22,9 @@ const TRANSITION_LABELS: Partial<Record<OrderState, string>> = {
 
 /**
  * State-machine controls for one order. Every move goes through the guarded
- * transition_order_status RPC; `completed` additionally requires payment,
- * which arrives in Phase 10 (see payment-recording.ts).
+ * transition_order_status RPC; `completed` additionally requires the bill to
+ * be paid in full (enforced again in SQL). Payments are recorded in the
+ * billing panel on this page, never from this component.
  */
 export function OrderActions({
   businessId,
@@ -31,12 +32,15 @@ export function OrderActions({
   outletId,
   status,
   canManage,
+  paymentPending,
 }: {
   businessId: string;
   orderId: string;
   outletId: string;
   status: OrderState;
   canManage: boolean;
+  /** True while the bill still has a balance due (or nothing is paid yet). */
+  paymentPending: boolean;
 }) {
   const router = useRouter();
   const [busy, setBusy] = React.useState<string | null>(null);
@@ -79,7 +83,7 @@ export function OrderActions({
         {next
           .filter((to) => to !== "cancelled")
           .map((to) => {
-            const blocked = to === "completed" && !PAYMENT_COLLECTION_AVAILABLE;
+            const blocked = to === "completed" && (!PAYMENT_COLLECTION_AVAILABLE || paymentPending);
             return (
               <Button
                 key={to}
@@ -87,7 +91,7 @@ export function OrderActions({
                 variant={to === "completed" ? "secondary" : "default"}
                 className={to === "completed" ? "" : "h-10 bg-ink text-parchment hover:bg-ink-soft"}
                 disabled={busy !== null || blocked}
-                title={blocked ? "Payment collection arrives in Phase 10" : undefined}
+                title={blocked ? "Record payment in full before completing" : undefined}
                 onClick={() => void move(to)}
               >
                 {busy === to ? <Loader2 className="animate-spin" /> : null}
@@ -124,9 +128,9 @@ export function OrderActions({
         </div>
       ) : null}
 
-      {status === "ready" ? (
+      {status === "ready" && paymentPending ? (
         <p className="text-xs text-muted-foreground">
-          Completing this order requires a recorded payment — payment collection ships in the next phase.
+          Completing this order requires the bill to be paid in full. Record payment below first.
         </p>
       ) : null}
 

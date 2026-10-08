@@ -16,6 +16,7 @@ import {
   ShieldCheck,
   Users,
   type LucideIcon,
+  Wallet,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -27,6 +28,7 @@ const moduleIcons: Record<AppPath, LucideIcon> = {
   "/dashboard": LayoutDashboard,
   "/pos": ReceiptText,
   "/floor": Armchair,
+  "/payments": Wallet,
   "/kitchen": ChefHat,
   "/menu": BookOpen,
   "/inventory": Boxes,

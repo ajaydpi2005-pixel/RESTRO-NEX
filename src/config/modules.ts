@@ -11,6 +11,7 @@ export type AppPath =
   | "/dashboard"
   | "/pos"
   | "/floor"
+  | "/payments"
   | "/kitchen"
   | "/menu"
   | "/inventory"
@@ -77,6 +78,21 @@ export const appModules: AppModule[] = [
       "Reserve and release tables with notes",
       "Transfer, merge and split dine-in bills",
       "Complete tables once the bill is settled",
+    ],
+  },
+  {
+    path: "/payments",
+    title: "Payments",
+    description: "Payments, split bills, receipts, invoices, refunds and reconciliation.",
+    phase: 10,
+    phaseName: "Payments + Billing + Receipts",
+    planned: [
+      "Cash, UPI, card and configurable payment methods",
+      "Split, partial and multi-method bills",
+      "Numbered invoices and receipts with audited reprints",
+      "Refunds with permissions and reasons",
+      "Payment status and reconciliation by outlet and IST day",
+      "Razorpay abstraction (not connected; no live charges)",
     ],
   },
   {
@@ -173,7 +189,7 @@ export const appModules: AppModule[] = [
 /** Sidebar groupings for the restaurant application shell. */
 export const appNavGroups: { label: string; paths: AppPath[] }[] = [
   { label: "Overview", paths: ["/dashboard"] },
-  { label: "Operations", paths: ["/pos", "/floor", "/kitchen", "/menu"] },
+  { label: "Operations", paths: ["/pos", "/floor", "/payments", "/kitchen", "/menu"] },
   { label: "Management", paths: ["/inventory", "/customers"] },
   { label: "Insights", paths: ["/reports"] },
   { label: "System", paths: ["/settings"] },

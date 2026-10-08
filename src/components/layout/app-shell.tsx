@@ -18,6 +18,7 @@ import {
   ShieldCheck,
   Users,
   type LucideIcon,
+  Wallet,
 } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
 import { signOutAction } from "@/modules/auth/actions";
@@ -38,6 +39,7 @@ const moduleIcons: Record<AppPath, LucideIcon> = {
   "/dashboard": LayoutDashboard,
   "/pos": ReceiptText,
   "/floor": Armchair,
+  "/payments": Wallet,
   "/kitchen": ChefHat,
   "/menu": BookOpen,
   "/inventory": Boxes,
@@ -130,7 +132,7 @@ export function AppShell({
   return (
     <div className="min-h-dvh">
       {/* Desktop sidebar */}
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col bg-sidebar text-sidebar-foreground lg:flex">
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col bg-sidebar text-sidebar-foreground lg:flex print:hidden">
         <div className="flex h-14 items-center gap-2.5 border-b border-sidebar-border px-4">
           <Link href="/dashboard" onClick={() => setMobileOpen(false)} aria-label="RestroNex dashboard">
             <Logo className="text-sidebar-foreground" />
@@ -141,8 +143,8 @@ export function AppShell({
       </aside>
 
       {/* Content column */}
-      <div className="flex min-h-dvh flex-col lg:pl-64">
-        <header className="sticky top-0 z-20 flex h-14 items-center gap-3 border-b border-border bg-background/90 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/70 sm:px-6">
+      <div className="flex min-h-dvh flex-col lg:pl-64 print:min-h-0 print:pl-0">
+        <header className="print:hidden sticky top-0 z-20 flex h-14 items-center gap-3 border-b border-border bg-background/90 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/70 sm:px-6">
           <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon" className="lg:hidden" aria-label="Open navigation">
@@ -195,7 +197,7 @@ export function AppShell({
           </div>
         </header>
 
-        <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">
+        <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8 print:p-0">
           <div className="mx-auto w-full max-w-6xl">{children}</div>
         </main>
       </div>

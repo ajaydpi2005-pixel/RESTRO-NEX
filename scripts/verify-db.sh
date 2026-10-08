@@ -71,3 +71,6 @@ $PSQL -f scripts/local-pg/assertions-phase8.sql
 
 echo "→ Running floor + table lifecycle assertions (Phase 9)"
 $PSQL -f scripts/local-pg/assertions-phase9.sql
+
+echo "→ Running payments, billing, refunds + reconciliation assertions (Phase 10)"
+$PSQL -f scripts/local-pg/assertions-phase10.sql

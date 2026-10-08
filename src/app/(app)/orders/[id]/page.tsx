@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { getViewerAbilities } from "@/lib/rbac/enforce";
@@ -10,6 +11,8 @@ import { OrderActions } from "@/modules/orders/components/order-actions";
 import { OrdersBusinessPicker } from "@/modules/orders/components/business-picker";
 import { resolveOrdersBusiness } from "@/modules/orders/context";
 import { loadOrderDetail } from "@/modules/orders/queries";
+import { BillingPanel } from "@/modules/payments/components/billing-panel";
+import { loadLatestInvoice, loadOrderBilling } from "@/modules/payments/queries";
 import {
   ORDER_STATE_LABELS,
   ORDER_TYPE_LABELS,
@@ -46,6 +49,13 @@ export default async function OrderDetailPage({
   const state = isOrderState(order.status) ? order.status : null;
   const money = (minor: number) => `₹${minorToDisplay(minor)}`;
 
+  const canViewBilling = abilities.can("billing.view");
+  const [billing, invoice] = canViewBilling
+    ? await Promise.all([loadOrderBilling(business.id, order.id), loadLatestInvoice(business.id, order.id)])
+    : [null, null];
+  // paid_minor is net of refunds, so the balance is total minus paid.
+  const balanceDueMinor = Math.max(order.totalMinor - order.paidMinor, 0);
+
   return (
     <div className="space-y-6">
       <div className="space-y-1">
@@ -76,6 +86,17 @@ export default async function OrderDetailPage({
         </p>
       </div>
 
+      <div className="flex flex-wrap gap-2 print:hidden">
+        <Button asChild variant="outline" className="h-9">
+          <Link href={`/orders/${order.id}/kot?business=${business.id}`}>Kitchen ticket</Link>
+        </Button>
+        {invoice && invoice.status === "issued" ? (
+          <Button asChild variant="outline" className="h-9">
+            <Link href={`/payments/invoices/${order.id}?business=${business.id}`}>Invoice {invoice.invoiceNo}</Link>
+          </Button>
+        ) : null}
+      </div>
+
       {state ? (
         <OrderActions
           businessId={business.id}
@@ -83,6 +104,7 @@ export default async function OrderDetailPage({
           outletId={order.outletId}
           status={state}
           canManage={abilities.can("orders.manage")}
+          paymentPending={balanceDueMinor > 0}
         />
       ) : null}
 
@@ -156,11 +178,22 @@ export default async function OrderDetailPage({
                     Payment: {order.paymentStatus}
                     {order.paidMinor > 0 ? ` · paid ${money(order.paidMinor)}` : ""}
                   </span>
-                  <span>Payment collection arrives in Phase 10</span>
                 </div>
               </div>
             </CardContent>
           </Card>
+
+          {billing ? (
+            <BillingPanel
+              businessId={business.id}
+              orderId={order.id}
+              orderStatus={order.status}
+              billing={billing}
+              invoice={invoice}
+              canCollect={abilities.can("billing.manage")}
+              canRefund={abilities.can("refunds.process")}
+            />
+          ) : null}
 
           <Card>
             <CardHeader>

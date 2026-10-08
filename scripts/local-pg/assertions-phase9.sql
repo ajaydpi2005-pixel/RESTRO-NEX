@@ -493,14 +493,16 @@ begin
     'outlet_id', v_outlet_a, 'client_ref', 'p9-merge-002', 'order_type', 'dine_in',
     'table_id', v_table_c,
     'items', jsonb_build_array(jsonb_build_object('item_type','product','product_id', v_fries,'quantity',1))));
-  update public.orders set paid_minor = total_minor, payment_status = 'paid' where id = v_merge;
+  perform public.record_payments(v_actor, v_merge, 'p9-pay-merge-01', jsonb_build_array(jsonb_build_object(
+    'method_key', 'cash', 'amount_minor', (select total_minor from public.orders where id = v_merge))));
   begin
     perform public.merge_tables(v_actor, v_keep, v_merge);
     raise exception 'paid order merged';
   exception when others then
     if sqlerrm not ilike '%recorded payments%' then raise; end if;
   end;
-  update public.orders set paid_minor = 0, payment_status = 'unpaid' where id = v_merge;
+  perform public.refund_payment(v_actor, (select p.id from public.payments p where p.order_id = v_merge),
+    (select total_minor from public.orders where id = v_merge), 'Phase 9 test reversal', 'p9-refund-merge-01');
   perform public.transition_order_status(v_actor, v_merge, 'cancelled');
 
   raise notice 'OK: merge moves items, re-prices, closes merged order, frees table';
@@ -651,20 +653,23 @@ begin
     'outlet_id', v_outlet_a, 'client_ref', 'p9-notready-001', 'order_type', 'dine_in',
     'table_id', v_table_b,
     'items', jsonb_build_array(jsonb_build_object('item_type','product','product_id', v_fries,'quantity',1))));
-  update public.orders set paid_minor = total_minor, payment_status = 'paid'
-  where id = (select current_order_id from public.dining_tables where id = v_table_b);
+  perform public.record_payments(v_actor, (select current_order_id from public.dining_tables where id = v_table_b),
+    'p9-pay-notready-01', jsonb_build_array(jsonb_build_object('method_key', 'cash',
+    'amount_minor', (select total_minor from public.orders where id = (select current_order_id from public.dining_tables where id = v_table_b)))));
   begin
     perform public.complete_table(v_actor, v_table_b);
     raise exception 'not-ready table completed';
   exception when others then
     if sqlerrm not ilike '%must be ready%' then raise; end if;
   end;
-  update public.orders set paid_minor = 0, payment_status = 'unpaid'
-  where id = (select current_order_id from public.dining_tables where id = v_table_b);
+  perform public.refund_payment(v_actor,
+    (select p.id from public.payments p where p.order_id = (select current_order_id from public.dining_tables where id = v_table_b)),
+    (select total_minor from public.orders where id = (select current_order_id from public.dining_tables where id = v_table_b)),
+    'Phase 9 test reversal', 'p9-refund-notready-01');
 
-  -- paid + ready → completes order and frees table (Phase 10 payment seam
-  -- is not live yet, so the paid state is simulated directly in the test)
-  update public.orders set paid_minor = total_minor, payment_status = 'paid' where id = v_order;
+  -- paid + ready → completes order and frees table (paid through the Phase 10 ledger)
+  perform public.record_payments(v_actor, v_order, 'p9-pay-ready-01', jsonb_build_array(jsonb_build_object(
+    'method_key', 'cash', 'amount_minor', (select total_minor from public.orders where id = v_order))));
   perform public.complete_table(v_actor, v_table_a);
   if (select status from public.orders where id = v_order) <> 'completed' then
     raise exception 'paid ready order not completed';

@@ -310,7 +310,7 @@ function CompleteForm({ table, businessId, onDone }: { table: TableCard; busines
         <p className="text-xs text-muted-foreground">
           {order.status !== "ready"
             ? `Kitchen status is “${ORDER_STATUS_LABELS[order.status] ?? order.status}” — the order must be ready first.`
-            : "Payment is not fully recorded yet (Phase 10 adds settlement)."}
+            : "Payment is not fully recorded yet. Record it from the order's billing panel."}
         </p>
       ) : null}
       <FormError state={state} />

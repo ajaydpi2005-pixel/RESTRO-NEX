@@ -5,7 +5,8 @@
  *   open / held / placed / preparing → cancelled
  *
  * `ready → completed` additionally requires the order to be fully paid
- * (enforced in transition_order_status); payment recording ships in Phase 10.
+ * (enforced in transition_order_status). Payments are recorded from the
+ * order's billing panel.
  */
 
 export const ORDER_STATES = [

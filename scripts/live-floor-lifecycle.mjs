@@ -2,7 +2,7 @@
 /**
  * RestroNex Phase 9 — dining tables + floor management end-to-end.
  *
- * Requires: migrations through 20261009120000 pushed to the hosted project
+ * Requires: migrations through 20261009130000 pushed to the hosted project
  * and the app running on http://localhost:3000 (npm run start).
  *
  * Exercises the Phase 9 SECURITY DEFINER RPCs (the exact code the floor
@@ -471,12 +471,15 @@ try {
   const readyUnpaid = await rpc("complete_table", { p_actor: userA.id, p_table_id: f3 });
   check("ready-but-unpaid table still blocked", !okRpc(readyUnpaid.status) && /settle the bill/i.test(readyUnpaid.json?.message ?? ""));
 
-  // simulate Phase 10 settlement directly (payment seam is not live yet)
+  // settle the bill through the real payment ledger (never by writing paid fields)
   const orderXRow = (await serviceSelect("orders", `id=eq.${orderX}&select=total_minor`))[0];
-  await got(`/rest/v1/orders?id=eq.${orderX}`, {
-    method: "PATCH", service: true,
-    body: { paid_minor: orderXRow.total_minor, payment_status: "paid" },
+  const settle = await rpc("record_payments", {
+    p_actor: userA.id,
+    p_order_id: orderX,
+    p_batch_key: `floor-settle-${ts}`,
+    p_lines: [{ method_key: "cash", amount_minor: orderXRow.total_minor, tendered_minor: null, reference: null }],
   });
+  check("bill settled through record_payments", okRpc(settle.status), rpcError(settle));
   const completePaid = await rpc("complete_table", { p_actor: userA.id, p_table_id: f3 });
   const f3AfterComplete = await tableRow(f3);
   const orderXFinal = (await serviceSelect("orders", `id=eq.${orderX}&select=status`))[0];

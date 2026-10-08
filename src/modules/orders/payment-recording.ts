@@ -1,56 +1,67 @@
+import { callLedger, LedgerError } from "@/modules/payments/ledger";
+
 /**
- * ⚠️ PHASE 10 PLACEHOLDER — payment recording abstraction.
+ * Phase 10 — the ONLY place that records customer payments.
  *
- * Phase 8 deliberately collects NO money and talks to NO payment gateway.
- * Orders move to `ready` while `payment_status` stays `pending`. When a
- * payment is recorded in Phase 10, `orders.paid_minor` is advanced and the
- * guarded state machine then permits `ready → completed`.
+ * Phase 8 shipped this as a throwing stub. It now delegates to the
+ * `record_payments` RPC, which:
+ *   - locks the order row, so concurrent payments serialise;
+ *   - dedupes on the batch key, so a retried submit cannot charge twice;
+ *   - validates every line in SQL (method, amount, tender, reference, balance);
+ *   - writes the payment rows, a numbered receipt and an audit entry, then
+ *     recomputes `orders.paid_minor` / `payment_status` from the ledger.
  *
- * This module is the single seam Phase 10 will implement. It is the ONLY
- * place that may ever set `orders.paid_minor` / `payment_status`.
+ * Amounts are integer minor units. Callers must pass parsed integers, never
+ * floats or display strings.
  */
 
-export type PaymentMethod =
-  | "cash"
-  | "card"
-  | "upi"
-  | "wallet"
-  | "gift_card"
-  | "other";
-
-export interface PaymentRecordInput {
-  orderId: string;
-  /** money collected, in minor units; must be server-verified in Phase 10 */
+export interface PaymentLineRecord {
+  methodKey: string;
   amountMinor: number;
-  method: PaymentMethod;
-  /** gateway / cash-drawer reference, if any */
-  reference: string | null;
+  tenderedMinor?: number | null;
+  reference?: string | null;
 }
 
-export interface PaymentRecordResult {
-  ok: boolean;
+export interface RecordPaymentBatchInput {
+  actorUserId: string;
   orderId: string;
-  error?: string;
+  batchKey: string;
+  lines: PaymentLineRecord[];
 }
 
-/**
- * NOT IMPLEMENTED in Phase 8 — throws if called so nothing can silently
- * fake a payment. Phase 10 replaces the body with a server-side
- * transaction that: verifies the amount against order totals, marks the
- * payment source (gateway capture or cashier attestation), updates
- * `paid_minor` / `payment_status`, and writes an audit row.
- */
-// Parameters are the Phase 10 contract; unused until payment collection lands.
-export async function recordPayment(
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  _input: PaymentRecordInput,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  _actorUserId: string,
-): Promise<PaymentRecordResult> {
-  throw new Error(
-    "Payment collection is not available yet (RestroNex Phase 10). Orders can be placed and tracked, but no money is collected in this phase.",
-  );
+export interface RecordPaymentBatchResult {
+  duplicate: boolean;
+  receiptId: string;
+  receiptNo: string;
+  amountMinor: number;
+  balanceDueMinor: number;
 }
 
-/** Phase 8 orders can never be marked paid. */
-export const PAYMENT_COLLECTION_AVAILABLE = false;
+export async function recordPaymentBatch(input: RecordPaymentBatchInput): Promise<RecordPaymentBatchResult> {
+  const result = await callLedger<{
+    duplicate: boolean;
+    receipt_id: string;
+    receipt_no: string;
+    amount_minor: number;
+    balance_due_minor: number;
+  }>("record_payments", {
+    p_actor: input.actorUserId,
+    p_order_id: input.orderId,
+    p_batch_key: input.batchKey,
+    p_lines: input.lines.map((line) => ({
+      method_key: line.methodKey,
+      amount_minor: line.amountMinor,
+      tendered_minor: line.tenderedMinor ?? null,
+      reference: line.reference ?? null,
+    })),
+  });
+  return {
+    duplicate: Boolean(result.duplicate),
+    receiptId: result.receipt_id,
+    receiptNo: result.receipt_no,
+    amountMinor: Number(result.amount_minor),
+    balanceDueMinor: Number(result.balance_due_minor),
+  };
+}
+
+export { LedgerError };
