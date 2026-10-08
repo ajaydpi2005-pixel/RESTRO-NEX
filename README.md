@@ -17,7 +17,8 @@ customers and multi-outlet management — on one platform with strictly isolated
 | 1     | Supabase + Database Foundation     | ✅ Complete     |
 | 2     | Multi-Tenant Architecture + RLS    | ✅ Complete     |
 | 3     | Authentication + User Accounts     | ✅ Complete     |
-| 4–25  | See `docs/MASTER_SPEC.md` §43      | Roadmap         |
+| 4     | Business + Outlet Management       | ✅ Code complete — live deploy pending Supabase credentials |
+| 5–25  | See `docs/MASTER_SPEC.md` §43      | Roadmap         |
 
 ## Tech stack
 
