@@ -1,0 +1,200 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* ------------------------------------------------------------------ */
+/* RestroNex design tokens                                             */
+/*                                                                     */
+/* Brand palette:                                                      */
+/*   Deep green-black  #101B19                                         */
+/*   Champagne gold    #D4B477  (accent only — never dominant)         */
+/*   Warm white        #F5F3EE                                         */
+/*   Operational surfaces use neutral green-slate tones.               */
+/* ------------------------------------------------------------------ */
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", monospace;
+  --font-heading: var(--font-sans);
+  --font-display: var(--font-fraunces), ui-serif, Georgia, serif;
+
+  /* Static brand tokens */
+  --color-gold: #d4b477;
+  --color-gold-bright: #e5cd99;
+  --color-gold-deep: #a8894e;
+  --color-ink: #101b19;
+  --color-ink-soft: #16241f;
+  --color-parchment: #f5f3ee;
+
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+:root {
+  --background: #f5f3ee;
+  --foreground: #101b19;
+
+  --card: #fcfbf7;
+  --card-foreground: #101b19;
+
+  --popover: #ffffff;
+  --popover-foreground: #101b19;
+
+  --primary: #101b19;
+  --primary-foreground: #f5f3ee;
+
+  --secondary: #e9e5da;
+  --secondary-foreground: #21302a;
+
+  --muted: #edeae1;
+  --muted-foreground: #5d6862;
+
+  --accent: #f0e8d4;
+  --accent-foreground: #21302a;
+
+  --destructive: #b42318;
+  --destructive-foreground: #ffffff;
+
+  --border: #e0dbcd;
+  --input: #ddd7c8;
+  --ring: #d4b477;
+
+  /* Charts — reserved for Phase 16 reports */
+  --chart-1: #2f5d50;
+  --chart-2: #d4b477;
+  --chart-3: #64766f;
+  --chart-4: #8a6d3b;
+  --chart-5: #22302b;
+
+  --radius: 0.625rem;
+
+  /* Sidebar is always deep green-black — brand surface in every theme */
+  --sidebar: #101b19;
+  --sidebar-foreground: #e9e5da;
+  --sidebar-primary: #d4b477;
+  --sidebar-primary-foreground: #101b19;
+  --sidebar-accent: rgba(245, 243, 238, 0.08);
+  --sidebar-accent-foreground: #f5f3ee;
+  --sidebar-border: rgba(245, 243, 238, 0.12);
+  --sidebar-ring: #d4b477;
+}
+
+.dark {
+  --background: #0c1412;
+  --foreground: #f5f3ee;
+
+  --card: #131f1b;
+  --card-foreground: #f5f3ee;
+
+  --popover: #15221e;
+  --popover-foreground: #f5f3ee;
+
+  --primary: #f5f3ee;
+  --primary-foreground: #101b19;
+
+  --secondary: #1d2b26;
+  --secondary-foreground: #e9e5da;
+
+  --muted: #1d2b26;
+  --muted-foreground: #9da8a1;
+
+  --accent: #223129;
+  --accent-foreground: #f5f3ee;
+
+  --destructive: #e5484d;
+  --destructive-foreground: #ffffff;
+
+  --border: #24352e;
+  --input: #263931;
+  --ring: #d4b477;
+
+  --chart-1: #5da38b;
+  --chart-2: #d4b477;
+  --chart-3: #8fa39a;
+  --chart-4: #c2a061;
+  --chart-5: #d8d4c8;
+
+  --sidebar: #0a1210;
+  --sidebar-foreground: #e9e5da;
+  --sidebar-primary: #d4b477;
+  --sidebar-primary-foreground: #101b19;
+  --sidebar-accent: rgba(245, 243, 238, 0.07);
+  --sidebar-accent-foreground: #f5f3ee;
+  --sidebar-border: rgba(245, 243, 238, 0.1);
+  --sidebar-ring: #d4b477;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  html {
+    @apply scroll-smooth font-sans;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+  }
+
+  ::selection {
+    @apply bg-gold/30;
+  }
+}
+
+/* Subtle scrollbars for operational screens (POS / KDS) */
+@layer utilities {
+  .scrollbar-slim::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  .scrollbar-slim::-webkit-scrollbar-thumb {
+    @apply rounded-full bg-border;
+  }
+  .scrollbar-slim::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
