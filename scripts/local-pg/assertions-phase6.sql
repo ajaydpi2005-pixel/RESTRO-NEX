@@ -258,8 +258,11 @@ begin
     '[{"name":"Tandoor","description":"Clay oven"}]'::jsonb
   ) into v_total;
   reset role;
-  if (select count(*) from public.kitchen_stations where outlet_id = v_main) <> 1 then
+  if (select count(*) from public.kitchen_stations where outlet_id = v_main and is_active) <> 1 then
     raise exception 'station replace failed';
+  end if;
+  if (select count(*) from public.kitchen_stations where outlet_id = v_main and not is_active) <> 2 then
+    raise exception 'removed station must be deactivated, not deleted';
   end if;
 
   set role service_role;

@@ -15,17 +15,17 @@ begin
   if v_roles <> 8 then
     raise exception 'expected 8 roles, found %', v_roles;
   end if;
-  if v_perms <> 26 then
-    raise exception 'expected 26 permissions, found %', v_perms;
+  if v_perms <> 29 then
+    raise exception 'expected 29 permissions, found %', v_perms;
   end if;
   if v_owner <> v_perms then
     raise exception 'owner must hold every permission (%, %) ', v_owner, v_perms;
   end if;
-  -- all 13 domains represented
-  if (select count(distinct domain) from public.permissions) <> 13 then
-    raise exception 'expected 13 permission domains';
+  -- all 14 domains represented
+  if (select count(distinct domain) from public.permissions) <> 14 then
+    raise exception 'expected 14 permission domains';
   end if;
-  raise notice 'OK: 8 roles, 26 permissions across 13 domains, owner holds all';
+  raise notice 'OK: 8 roles, 29 permissions across 14 domains, owner holds all';
 end $$;
 
 \echo '── P5.2: matrix spot checks (mirrors src/lib/rbac/permissions.ts)'

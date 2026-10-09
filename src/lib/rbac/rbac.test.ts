@@ -28,7 +28,7 @@ describe("RBAC catalogue integrity", () => {
     );
   });
 
-  it("covers all 13 required permission domains", () => {
+  it("covers all 14 permission domains (Phase 11 adds kitchen)", () => {
     expect([...PERMISSION_DOMAINS].sort()).toEqual(
       [
         "orders",
@@ -44,6 +44,7 @@ describe("RBAC catalogue integrity", () => {
         "settings",
         "outlets",
         "subscriptions",
+        "kitchen",
       ].sort(),
     );
     const domainsInKeys = new Set(PERMISSIONS.map((p) => p.split(".")[0]));
@@ -108,11 +109,27 @@ describe("RBAC catalogue integrity", () => {
     expect(accountant.has("subscriptions.manage")).toBe(false);
   });
 
-  it("kitchen staff see orders and the menu only", () => {
+  it("kitchen staff see orders and the menu, and work the board — nothing financial", () => {
     expect([...permissionsForRole("kitchen_staff")].sort()).toEqual([
+      "kitchen.operate",
+      "kitchen.view",
       "menu.view",
       "orders.view",
     ]);
+    const kitchen = permissionsForRole("kitchen_staff");
+    expect(kitchen.has("kitchen.manage")).toBe(false);
+    for (const prefix of ["billing.", "refunds.", "discounts.", "settings.", "subscriptions.", "reports."]) {
+      expect([...kitchen].some((p) => p.startsWith(prefix))).toBe(false);
+    }
+  });
+
+  it("only managers can configure kitchen routing; no other role touches the KDS", () => {
+    for (const role of ["owner", "business_admin", "outlet_manager"] as const) {
+      expect(permissionsForRole(role).has("kitchen.manage")).toBe(true);
+    }
+    for (const role of ["cashier", "waiter", "accountant", "inventory_manager"] as const) {
+      expect([...permissionsForRole(role)].some((p) => p.startsWith("kitchen."))).toBe(false);
+    }
   });
 
   it("hasPermission is safe against garbage input", () => {

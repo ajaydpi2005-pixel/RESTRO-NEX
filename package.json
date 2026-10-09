@@ -23,7 +23,8 @@
     "test:rbac:e2e": "node scripts/live-rbac-lifecycle.mjs",
     "test:onboarding:e2e": "node scripts/live-onboarding-lifecycle.mjs",
     "test:menu:e2e": "node scripts/live-menu-lifecycle.mjs",
-    "test:pos:e2e": "node scripts/live-pos-lifecycle.mjs"
+    "test:pos:e2e": "node scripts/live-pos-lifecycle.mjs",
+    "test:kitchen:e2e": "node scripts/live-kitchen-lifecycle.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
@@ -53,6 +54,7 @@
     "supabase": "^2.120.0",
     "tailwindcss": "^4",
     "typescript": "^5",
-    "vitest": "^4.1.11"
+    "vitest": "^4.1.11",
+    "ws": "^8.22.0"
   }
 }

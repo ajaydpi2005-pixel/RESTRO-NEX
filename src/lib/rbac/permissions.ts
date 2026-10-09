@@ -26,6 +26,7 @@ export const PERMISSION_DOMAINS = [
   "settings",
   "outlets",
   "subscriptions",
+  "kitchen",
 ] as const;
 
 export type PermissionDomain = (typeof PERMISSION_DOMAINS)[number];
@@ -58,6 +59,9 @@ export const PERMISSIONS = [
   "outlets.manage",
   "subscriptions.view",
   "subscriptions.manage",
+  "kitchen.view",
+  "kitchen.operate",
+  "kitchen.manage",
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -125,6 +129,9 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "inventory.view",
     "settings.view",
     "outlets.view",
+    "kitchen.view",
+    "kitchen.operate",
+    "kitchen.manage",
   ],
   cashier: [
     "orders.view",
@@ -136,7 +143,8 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "customers.view",
   ],
   waiter: ["orders.view", "orders.manage", "billing.view", "menu.view", "customers.view"],
-  kitchen_staff: ["orders.view", "menu.view"],
+  // Kitchen staff work the board only: no manage rights and no financial permissions.
+  kitchen_staff: ["orders.view", "menu.view", "kitchen.view", "kitchen.operate"],
   inventory_manager: [
     "inventory.view",
     "inventory.manage",

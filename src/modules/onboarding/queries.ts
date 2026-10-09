@@ -204,6 +204,7 @@ export async function loadKitchenStations(outletId: string): Promise<KitchenStat
     .from("kitchen_stations")
     .select("id, name, description")
     .eq("outlet_id", outletId)
+    .eq("is_active", true)
     .order("sort_order", { ascending: true });
   if (error || !data) return [];
   return data;
@@ -310,7 +311,12 @@ export async function loadOnboardingCounts(
   let stations = 0;
   for (const outlet of outlets) {
     tables += await countOf("dining_tables", "outlet_id", outlet.id);
-    stations += await countOf("kitchen_stations", "outlet_id", outlet.id);
+    const { count: activeStations } = await admin
+      .from("kitchen_stations")
+      .select("id", { count: "exact", head: true })
+      .eq("outlet_id", outlet.id)
+      .eq("is_active", true);
+    stations += activeStations ?? 0;
   }
   const menuItems = await countOf("menu_items", "business_id", businessId);
   const invites = await loadPendingInvites(businessId);

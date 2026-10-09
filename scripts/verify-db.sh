@@ -74,3 +74,6 @@ $PSQL -f scripts/local-pg/assertions-phase9.sql
 
 echo "→ Running payments, billing, refunds + reconciliation assertions (Phase 10)"
 $PSQL -f scripts/local-pg/assertions-phase10.sql
+
+echo "→ Running kitchen display (KDS) assertions (Phase 11)"
+$PSQL -f scripts/local-pg/assertions-phase11.sql
