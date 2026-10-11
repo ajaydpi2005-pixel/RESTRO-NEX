@@ -20,7 +20,12 @@ order and station. A ticket sits in the column of its least-advanced item.
 | `completed` | Done. Leaves the board | — |
 | `cancelled` | Order cancelled. Leaves the board and raises a notification | — |
 
-The POS owns order status. The KDS moves items only, never the order.
+Kitchen progress moves the order status along the allowed transitions only (Phase 12, `20261009170000_waiter_ordering.sql`, `kitchen_sync_order_status`):
+
+- the first item accepted or cooking moves a `placed` order to `preparing`;
+- when every live item is `ready` or `completed`, the order moves to `ready`.
+
+The KDS never completes, cancels, or edits money on an order. Completion is blocked while any item is still `new`, `accepted` or `preparing` (`transition_order_status`), so a late round cannot be cleared off the board by a cashier. Each automatic step writes a history row with the note *Kitchen progress*.
 
 ## Routing
 

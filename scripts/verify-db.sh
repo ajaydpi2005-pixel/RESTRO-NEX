@@ -77,3 +77,4 @@ $PSQL -f scripts/local-pg/assertions-phase10.sql
 
 echo "→ Running kitchen display (KDS) assertions (Phase 11)"
 $PSQL -f scripts/local-pg/assertions-phase11.sql
+$PSQL -f scripts/local-pg/assertions-phase12.sql

@@ -156,7 +156,7 @@ begin
     'create_pos_order(uuid, jsonb)',
     'amend_pos_order(uuid, uuid, jsonb)',
     'transition_order_status(uuid, uuid, text, text)',
-    'pos_persist_items(uuid, uuid, uuid, jsonb)',
+    'pos_persist_items(uuid, uuid, uuid, jsonb, boolean)',
     'pos_apply_totals(uuid, uuid, bigint, jsonb, jsonb)',
     'pos_effective_tax_pct(uuid, uuid)'
   ] loop

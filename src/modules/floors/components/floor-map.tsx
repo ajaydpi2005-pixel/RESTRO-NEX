@@ -10,6 +10,7 @@ import {
   CheckCircle2,
   Clock3,
   Combine,
+  Receipt,
   Scissors,
   Users,
 } from "lucide-react";
@@ -578,6 +579,12 @@ export function FloorMap(props: FloorMapProps) {
                             <span className="mt-auto flex w-full items-center justify-between text-xs">
                               <span>#{table.order.orderNumber}</span>
                               <span className="font-semibold">{money(table.order.totalMinor)}</span>
+                            </span>
+                          ) : null}
+                          {table.status === "occupied" && table.order?.billRequestedAt ? (
+                            <span className="flex items-center gap-1 text-xs font-semibold">
+                              <Receipt className="size-3" aria-hidden />
+                              Bill requested
                             </span>
                           ) : null}
                           {table.status === "reserved" ? (

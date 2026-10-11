@@ -39,6 +39,8 @@ export interface TableCard {
     totalMinor: number;
     itemCount: number;
     createdAt: string;
+    /** Phase 12: set when a waiter asked for the bill. */
+    billRequestedAt?: string | null;
   } | null;
 }
 
@@ -92,7 +94,7 @@ export async function loadFloorPlan(outletId: string): Promise<FloorPlan> {
     const [{ data: orders }, { data: lines }] = await Promise.all([
       admin
         .from("orders")
-        .select("id, order_number, status, payment_status, total_minor, created_at")
+        .select("id, order_number, status, payment_status, total_minor, created_at, bill_requested_at")
         .in("id", orderIds),
       admin.from("order_items").select("order_id").in("order_id", orderIds),
     ]);
@@ -109,6 +111,7 @@ export async function loadFloorPlan(outletId: string): Promise<FloorPlan> {
         totalMinor: Number(o.total_minor),
         itemCount: lineCounts.get(o.id) ?? 0,
         createdAt: o.created_at,
+        billRequestedAt: o.bill_requested_at ?? null,
       });
     }
   }

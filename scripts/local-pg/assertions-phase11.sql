@@ -218,7 +218,7 @@ begin
   raise notice 'OK: send routes by item, then category; unrouted lane for unmatched items';
 end $$;
 
-\echo '── P11.4: kitchen actions advance items and tickets (order status stays POS-owned)'
+\echo '── P11.4: kitchen actions advance items and tickets (kitchen progress moves the order status)'
 do $$
 declare
   v_biz_a uuid := 'cccccccc-0000-0000-0000-000000000001';
@@ -290,11 +290,13 @@ begin
   v_n := public.kds_advance_ticket(v_kit, v_order, null, 'new', 'accepted');
   if v_n <> 1 then raise exception 'unrouted lane should hold 1 item, moved %', v_n; end if;
 
-  -- kitchen never drives order status
+  -- Phase 12: kitchen progress moves the order along allowed transitions. Items are
+  -- accepted/ready but the beverage and unrouted lanes are still active, so the order
+  -- is 'preparing' (not 'ready', and never 'completed').
   select status into v_status from public.orders where id = v_order;
-  if v_status <> 'placed' then raise exception 'kitchen changed order status to %', v_status; end if;
+  if v_status <> 'preparing' then raise exception 'order should be preparing, is %', v_status; end if;
 
-  raise notice 'OK: item and ticket lifecycle; stale and skipped transitions refused; order status untouched';
+  raise notice 'OK: item and ticket lifecycle; stale and skipped transitions refused; order preparing';
 end $$;
 
 \echo '── P11.5: kitchen RPC authorisation (outlet, permission, role)'

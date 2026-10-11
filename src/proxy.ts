@@ -17,6 +17,7 @@ const PROTECTED_PREFIXES = [
   "/dashboard",
   "/pos",
   "/kitchen",
+  "/waiter",
   "/menu",
   "/inventory",
   "/customers",
