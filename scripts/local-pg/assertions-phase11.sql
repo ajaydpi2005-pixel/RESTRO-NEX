@@ -855,4 +855,126 @@ begin
   raise notice 'OK: deleting an order clears its board rows without error';
 end $$;
 
+\echo '── P11.16: Phase 10 money reads are scoped (kitchen staff read no money; outlet grants respected)'
+do $$
+declare
+  v_biz uuid := 'cccccccc-0000-0000-0000-000000000001';
+  v_main uuid; v_branch uuid;
+begin
+  select id into v_main from public.outlets where business_id = v_biz and slug = 'main';
+  select id into v_branch from public.outlets where business_id = v_biz and slug = 'branch';
+
+  insert into auth.users (id, email, raw_user_meta_data) values
+    ('f1111111-0000-0000-0000-000000000030', 'p11cashmain@example.com', '{"full_name": "Cash Main"}'),
+    ('f1111111-0000-0000-0000-000000000031', 'p11cashbranch@example.com', '{"full_name": "Cash Branch"}');
+  insert into public.memberships (user_id, business_id, role) values
+    ('f1111111-0000-0000-0000-000000000030', v_biz, 'cashier'),
+    ('f1111111-0000-0000-0000-000000000031', v_biz, 'cashier');
+  insert into public.membership_outlets (membership_id, outlet_id)
+  select m.id, v_main from public.memberships m
+  where m.business_id = v_biz and m.user_id = 'f1111111-0000-0000-0000-000000000030';
+  insert into public.membership_outlets (membership_id, outlet_id)
+  select m.id, v_branch from public.memberships m
+  where m.business_id = v_biz and m.user_id = 'f1111111-0000-0000-0000-000000000031';
+
+  -- expected counts, taken as the owner of the cluster (bypasses RLS)
+  perform set_config('p11.exp.payments', (select count(*) from public.payments where outlet_id = v_main)::text, false);
+  perform set_config('p11.exp.receipts', (select count(*) from public.receipts where outlet_id = v_main)::text, false);
+  perform set_config('p11.exp.invoices', (select count(*) from public.invoices where outlet_id = v_main)::text, false);
+  perform set_config('p11.exp.refunds', (select count(*) from public.refunds where outlet_id = v_main)::text, false);
+  perform set_config('p11.exp.methods', (select count(*) from public.payment_methods where business_id = v_biz)::text, false);
+  if current_setting('p11.exp.payments')::int = 0 or current_setting('p11.exp.methods')::int = 0 then
+    raise exception 'fixture has no main payments or payment methods; the scope test would be vacuous';
+  end if;
+  raise notice 'OK: P11.16 fixtures ready (main payments=%, methods=%)',
+    current_setting('p11.exp.payments'), current_setting('p11.exp.methods');
+end $$;
+
+-- kitchen staff: no billing.view and no refunds.view, so every money table is empty
+set role authenticated;
+set request.jwt.claims = '{"sub": "f1111111-0000-0000-0000-000000000020", "role": "authenticated"}';
+do $$
+declare
+  v_biz uuid := 'cccccccc-0000-0000-0000-000000000001';
+  v_main uuid; n integer;
+begin
+  select id into v_main from public.outlets where business_id = v_biz and slug = 'main';
+  select count(*) into n from public.payments where outlet_id = v_main;
+  if n <> 0 then raise exception 'kitchen staff can read payments (%)', n; end if;
+  select count(*) into n from public.receipts where outlet_id = v_main;
+  if n <> 0 then raise exception 'kitchen staff can read receipts (%)', n; end if;
+  select count(*) into n from public.invoices where outlet_id = v_main;
+  if n <> 0 then raise exception 'kitchen staff can read invoices (%)', n; end if;
+  select count(*) into n from public.refunds where outlet_id = v_main;
+  if n <> 0 then raise exception 'kitchen staff can read refunds (%)', n; end if;
+  select count(*) into n from public.payment_methods where business_id = v_biz;
+  if n <> 0 then raise exception 'kitchen staff can read payment methods (%)', n; end if;
+  raise notice 'OK: kitchen staff read no payments, receipts, invoices, refunds or payment methods';
+end $$;
+reset role;
+
+-- cashier granted main: sees main's money rows exactly as the owner does
+set role authenticated;
+set request.jwt.claims = '{"sub": "f1111111-0000-0000-0000-000000000030", "role": "authenticated"}';
+do $$
+declare
+  v_biz uuid := 'cccccccc-0000-0000-0000-000000000001';
+  v_main uuid; n integer;
+begin
+  select id into v_main from public.outlets where business_id = v_biz and slug = 'main';
+  select count(*) into n from public.payments where outlet_id = v_main;
+  if n <> current_setting('p11.exp.payments')::int then raise exception 'main cashier sees % payments, expected %', n, current_setting('p11.exp.payments'); end if;
+  select count(*) into n from public.receipts where outlet_id = v_main;
+  if n <> current_setting('p11.exp.receipts')::int then raise exception 'main cashier sees % receipts, expected %', n, current_setting('p11.exp.receipts'); end if;
+  select count(*) into n from public.invoices where outlet_id = v_main;
+  if n <> current_setting('p11.exp.invoices')::int then raise exception 'main cashier sees % invoices, expected %', n, current_setting('p11.exp.invoices'); end if;
+  -- cashiers hold billing.view but not refunds.view (rbac matrix): no refund rows
+  select count(*) into n from public.refunds where outlet_id = v_main;
+  if n <> 0 then raise exception 'cashier without refunds.view can read refunds (%)', n; end if;
+  select count(*) into n from public.payment_methods where business_id = v_biz;
+  if n <> current_setting('p11.exp.methods')::int then raise exception 'main cashier sees % payment methods, expected %', n, current_setting('p11.exp.methods'); end if;
+  raise notice 'OK: outlet-granted cashier reads main money rows';
+end $$;
+reset role;
+
+-- cashier granted branch only: main's money rows are invisible
+set role authenticated;
+set request.jwt.claims = '{"sub": "f1111111-0000-0000-0000-000000000031", "role": "authenticated"}';
+do $$
+declare
+  v_biz uuid := 'cccccccc-0000-0000-0000-000000000001';
+  v_main uuid; n integer;
+begin
+  select id into v_main from public.outlets where business_id = v_biz and slug = 'main';
+  select count(*) into n from public.payments where outlet_id = v_main;
+  if n <> 0 then raise exception 'branch cashier can read main payments (%)', n; end if;
+  select count(*) into n from public.receipts where outlet_id = v_main;
+  if n <> 0 then raise exception 'branch cashier can read main receipts (%)', n; end if;
+  select count(*) into n from public.invoices where outlet_id = v_main;
+  if n <> 0 then raise exception 'branch cashier can read main invoices (%)', n; end if;
+  select count(*) into n from public.refunds where outlet_id = v_main;
+  if n <> 0 then raise exception 'branch cashier can read main refunds (%)', n; end if;
+  raise notice 'OK: outlet isolation holds for money rows (branch cashier sees no main rows)';
+end $$;
+reset role;
+
+-- accountant (business-scoped, billing.view + refunds.view): reads across outlets
+set role authenticated;
+set request.jwt.claims = '{"sub": "f1111111-0000-0000-0000-000000000011", "role": "authenticated"}';
+do $$
+declare
+  v_biz uuid := 'cccccccc-0000-0000-0000-000000000001';
+  v_main uuid; n integer;
+begin
+  select id into v_main from public.outlets where business_id = v_biz and slug = 'main';
+  select count(*) into n from public.payments where outlet_id = v_main;
+  if n <> current_setting('p11.exp.payments')::int then raise exception 'accountant sees % payments, expected %', n, current_setting('p11.exp.payments'); end if;
+  select count(*) into n from public.refunds where outlet_id = v_main;
+  if n <> current_setting('p11.exp.refunds')::int then raise exception 'accountant sees % refunds, expected %', n, current_setting('p11.exp.refunds'); end if;
+  select count(*) into n from public.payment_methods where business_id = v_biz;
+  if n <> current_setting('p11.exp.methods')::int then raise exception 'accountant sees % payment methods, expected %', n, current_setting('p11.exp.methods'); end if;
+  raise notice 'OK: business-scoped accountant reads money rows across outlets';
+end $$;
+reset role;
+
 \echo '── P11 complete'

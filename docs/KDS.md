@@ -2,6 +2,7 @@
 
 Route: `/kitchen` (live board) · `/kitchen/routing` (stations and routing, `kitchen.manage`).
 Migration: `supabase/migrations/20261009150000_kitchen_display.sql`.
+Follow-up: `supabase/migrations/20261009160000_payments_rls_scope.sql` scopes Phase 10 money reads (see Open items).
 
 ## What the kitchen sees
 
@@ -104,8 +105,9 @@ It also checks that another outlet's staff, even with a forged filter, receive n
 - **Hosted push**: the migration has not been applied to the hosted project yet.
 - **Retention**: finished rows (`completed`, `cancelled`) accumulate in `kitchen_items`, one per
   item sent. A scheduled prune of rows older than a few days is not built yet.
-- **Payments RLS (Phase 10)**: `payments`, `refunds`, `invoices`, `receipts` and related tables
-  still use business-wide `has_business_access`. Any member can read them with their own
-  session, kitchen staff included. The Phase 11 change does not touch these tables.
-- **Kitchen staff and `orders.view`**: the Phase 5 matrix gives kitchen staff `orders.view`, which
-  exposes order totals. Removing it is a permissions decision for the owner.
+- **Payments RLS (Phase 10): fixed** in `20261009160000_payments_rls_scope.sql`. `payments`,
+  `receipts`, `invoices` need `billing.view`, `refunds` needs `refunds.view`, both scoped to the
+  outlet (business-scoped roles such as accountant read across outlets). `payment_methods` needs
+  `billing.view` at business level. Kitchen staff read none of these. Asserted by P11.16.
+- **Kitchen staff and `orders.view`**: kept on purpose. The owner chose to keep it, so kitchen
+  staff can see order totals. Revisit this if the business wants totals hidden from the kitchen.
