@@ -15,6 +15,7 @@ export type AppPath =
   | "/kitchen"
   | "/menu"
   | "/inventory"
+  | "/purchasing"
   | "/customers"
   | "/reports"
   | "/settings";
@@ -141,6 +142,21 @@ export const appModules: AppModule[] = [
     ],
   },
   {
+    path: "/purchasing",
+    title: "Purchasing",
+    description: "Suppliers, purchase orders, goods receiving, supplier invoices and payables.",
+    phase: 14,
+    phaseName: "Purchasing + Suppliers",
+    planned: [
+      "Supplier records with payment terms and GSTIN",
+      "Purchase orders: draft, send, cancel and receive",
+      "Goods receiving that adds stock to the inventory ledger",
+      "Supplier invoices billed against received lines",
+      "Supplier payments on account, never above the balance owed",
+      "Purchase history, supplier balances and payables ageing",
+    ],
+  },
+  {
     path: "/customers",
     title: "Customers",
     description: "Customer CRM and loyalty with ledger-based points.",
@@ -190,7 +206,7 @@ export const appModules: AppModule[] = [
 export const appNavGroups: { label: string; paths: AppPath[] }[] = [
   { label: "Overview", paths: ["/dashboard"] },
   { label: "Operations", paths: ["/pos", "/floor", "/payments", "/kitchen", "/menu"] },
-  { label: "Management", paths: ["/inventory", "/customers"] },
+  { label: "Management", paths: ["/inventory", "/purchasing", "/customers"] },
   { label: "Insights", paths: ["/reports"] },
   { label: "System", paths: ["/settings"] },
 ];

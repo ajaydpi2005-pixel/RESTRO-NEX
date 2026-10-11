@@ -17,6 +17,7 @@ import {
   Users,
   type LucideIcon,
   Wallet,
+  Truck,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -32,6 +33,7 @@ const moduleIcons: Record<AppPath, LucideIcon> = {
   "/kitchen": ChefHat,
   "/menu": BookOpen,
   "/inventory": Boxes,
+  "/purchasing": Truck,
   "/customers": Users,
   "/reports": BarChart3,
   "/settings": Settings2,
