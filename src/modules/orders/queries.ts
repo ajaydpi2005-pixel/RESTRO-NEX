@@ -388,6 +388,21 @@ export interface OrderDetail {
   tableName: string | null;
   customerName: string | null;
   customerPhone: string | null;
+  /** Phase 15: linked customer (set from the phone on save). */
+  customerId: string | null;
+  /** Phase 15: coupon or reward discount, in paise, already part of discountMinor. */
+  promotionMinor: number;
+  promotion: {
+    kind: "coupon" | "reward";
+    label: string;
+    amountMinor: number;
+    discountType: "flat" | "percent";
+    discountValue: number;
+    minSubtotalMinor: number;
+    voucherId: string | null;
+  } | null;
+  /** True once an invoice is billed. Promotions cannot change then. */
+  billed: boolean;
   deliveryAddress: string | null;
   notes: string | null;
   discountType: string;
@@ -442,6 +457,12 @@ export async function loadOrderDetail(businessId: string, orderId: string): Prom
     .eq("order_id", orderId)
     .order("created_at", { ascending: true });
   const { data: outlet } = await admin.from("outlets").select("name").eq("id", order.outlet_id).maybeSingle();
+  const { data: promotion } = await admin
+    .from("order_promotions")
+    .select("kind, label, amount_minor, discount_type, discount_value, min_subtotal_minor, voucher_id")
+    .eq("order_id", orderId)
+    .eq("business_id", businessId)
+    .maybeSingle();
   let tableName: string | null = null;
   if (order.table_id) {
     const { data: table } = await admin.from("dining_tables").select("label").eq("id", order.table_id).maybeSingle();
@@ -459,6 +480,20 @@ export async function loadOrderDetail(businessId: string, orderId: string): Prom
     tableName,
     customerName: order.customer_name,
     customerPhone: order.customer_phone,
+    customerId: order.customer_id ?? null,
+    promotionMinor: Number(order.promotion_minor ?? 0),
+    promotion: promotion
+      ? {
+          kind: promotion.kind as "coupon" | "reward",
+          label: promotion.label,
+          amountMinor: Number(promotion.amount_minor),
+          discountType: promotion.discount_type as "flat" | "percent",
+          discountValue: Number(promotion.discount_value),
+          minSubtotalMinor: Number(promotion.min_subtotal_minor),
+          voucherId: promotion.voucher_id,
+        }
+      : null,
+    billed: order.billed_at != null,
     deliveryAddress: order.delivery_address,
     notes: order.notes,
     discountType: order.discount_type,

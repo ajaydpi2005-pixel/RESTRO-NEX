@@ -11,6 +11,8 @@ import { OrderActions } from "@/modules/orders/components/order-actions";
 import { OrdersBusinessPicker } from "@/modules/orders/components/business-picker";
 import { resolveOrdersBusiness } from "@/modules/orders/context";
 import { loadOrderDetail } from "@/modules/orders/queries";
+import { PromotionPanel } from "@/modules/customers/components/promotion-panel";
+import { loadIssuedVouchers, loadOrderCustomer } from "@/modules/customers/queries";
 import { BillingPanel } from "@/modules/payments/components/billing-panel";
 import { loadLatestInvoice, loadOrderBilling } from "@/modules/payments/queries";
 import {
@@ -55,6 +57,20 @@ export default async function OrderDetailPage({
     : [null, null];
   // paid_minor is net of refunds, so the balance is total minus paid.
   const balanceDueMinor = Math.max(order.totalMinor - order.paidMinor, 0);
+
+  // Phase 15: promotions change only while the order is open or held, unpaid and unbilled.
+  const canApplyPromotions = abilities.can("orders.manage") && abilities.can("discounts.apply");
+  const openForPromotions = order.status === "open" || order.status === "held";
+  const promotionsEditable = openForPromotions && order.paidMinor === 0 && !order.billed;
+  const promotionLockReason = !openForPromotions
+    ? "Coupons and rewards can only change while the order is open or held."
+    : order.paidMinor > 0
+      ? "Refund the recorded payments before changing the coupon or reward."
+      : order.billed
+        ? "Void the invoice before changing the coupon or reward."
+        : null;
+  const linkedCustomer = await loadOrderCustomer(business.id, order.customerId);
+  const issuedVouchers = linkedCustomer && canApplyPromotions ? await loadIssuedVouchers(business.id, linkedCustomer.id) : [];
 
   return (
     <div className="space-y-6">
@@ -157,6 +173,14 @@ export default async function OrderDetailPage({
                     <span className="text-green-700 tabular-nums">−{money(order.discountMinor)}</span>
                   </div>
                 ) : null}
+                {order.promotionMinor > 0 && order.promotion ? (
+                  <div className="flex justify-between pl-3 text-xs text-muted-foreground">
+                    <span>
+                      {order.promotion.kind === "coupon" ? "Coupon" : "Reward"} {order.promotion.label}
+                    </span>
+                    <span className="tabular-nums">−{money(order.promotionMinor)}</span>
+                  </div>
+                ) : null}
                 {order.taxMinor > 0 ? (
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Tax (exclusive)</span>
@@ -225,13 +249,24 @@ export default async function OrderDetailPage({
           </Card>
         </div>
 
-        <Card className="h-fit">
+        <div className="h-fit space-y-4">
+        <Card>
           <CardHeader>
             <CardTitle className="text-base">Customer</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
-            <p>{order.customerName ?? "Walk-in / unnamed"}</p>
+            <p>{linkedCustomer?.name ?? order.customerName ?? "Walk-in / unnamed"}</p>
             {order.customerPhone ? <p className="text-muted-foreground">📞 {order.customerPhone}</p> : null}
+            {order.customerId ? (
+              <p>
+                <Link
+                  href={`/customers/${order.customerId}?business=${business.id}&outlet=${order.outletId}`}
+                  className="text-xs font-medium text-gold-deep underline-offset-4 hover:underline"
+                >
+                  View customer profile →
+                </Link>
+              </p>
+            ) : null}
             {order.deliveryAddress ? (
               <p className="text-muted-foreground">
                 <span className="font-medium text-foreground">Deliver to:</span> {order.deliveryAddress}
@@ -247,6 +282,29 @@ export default async function OrderDetailPage({
             ) : null}
           </CardContent>
         </Card>
+
+        <PromotionPanel
+          businessId={business.id}
+          orderId={order.id}
+          editable={promotionsEditable}
+          canApply={canApplyPromotions}
+          lockReason={promotionLockReason}
+          promotion={
+            order.promotion
+              ? {
+                  kind: order.promotion.kind,
+                  label: order.promotion.label,
+                  amountMinor: order.promotion.amountMinor,
+                  discountType: order.promotion.discountType,
+                  discountValue: order.promotion.discountValue,
+                  minSubtotalMinor: order.promotion.minSubtotalMinor,
+                }
+              : null
+          }
+          customer={linkedCustomer}
+          vouchers={issuedVouchers}
+        />
+        </div>
       </div>
     </div>
   );
