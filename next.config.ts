@@ -16,6 +16,9 @@ const nextConfig: NextConfig = {
    */
   cacheComponents: false,
   partialPrefetching: false,
+  // Phase 16: report exports. pdfkit reads its standard font metrics from disk, so it must stay
+  // out of the server bundle.
+  serverExternalPackages: ["pdfkit", "exceljs"],
   turbopack: {
     rules: {
       "*.css": {

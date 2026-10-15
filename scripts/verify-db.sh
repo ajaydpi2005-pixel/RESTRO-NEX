@@ -83,3 +83,6 @@ $PSQL -f scripts/local-pg/assertions-phase14.sql
 
 echo "→ Running CRM + loyalty assertions (Phase 15)"
 $PSQL -f scripts/local-pg/assertions-phase15.sql
+
+echo "→ Running reports + analytics assertions (Phase 16)"
+$PSQL -f scripts/local-pg/assertions-phase16.sql
