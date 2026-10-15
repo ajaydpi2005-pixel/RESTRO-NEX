@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, Building2, Store, Users } from "lucide-react";
+import { ArrowRight, Building2, LifeBuoy, Store, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getManagedBusinesses } from "@/modules/business/queries";
@@ -64,6 +64,67 @@ export default async function SettingsPage() {
               className="inline-flex items-center gap-1.5 text-sm font-medium text-gold-deep underline-offset-4 hover:underline dark:text-gold"
             >
               Manage outlets <ArrowRight className="size-4" />
+            </Link>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <div className="flex size-9 items-center justify-center rounded-lg bg-ink text-gold">
+              <Store className="size-4.5" />
+            </div>
+            <CardTitle className="text-base">Online ordering</CardTitle>
+            <CardDescription>
+              Website and table QR ordering, minimum order, fees and table QR codes.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Link
+              href="/settings/ordering"
+              className="inline-flex items-center gap-1.5 text-sm font-medium text-gold-deep underline-offset-4 hover:underline dark:text-gold"
+            >
+              Manage ordering <ArrowRight className="size-4" />
+            </Link>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <div className="flex size-9 items-center justify-center rounded-lg bg-ink text-gold">
+              <Store className="size-4.5" />
+            </div>
+            <CardTitle className="text-base">Integrations</CardTitle>
+            <CardDescription>
+              Printers, messaging, payments and accounting exports. Connections run in DEMO mode in
+              this build.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Link
+              href="/settings/integrations"
+              className="inline-flex items-center gap-1.5 text-sm font-medium text-gold-deep underline-offset-4 hover:underline dark:text-gold"
+            >
+              Manage integrations <ArrowRight className="size-4" />
+            </Link>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <div className="flex size-9 items-center justify-center rounded-lg bg-ink text-gold">
+              <LifeBuoy className="size-4.5" />
+            </div>
+            <CardTitle className="text-base">Support</CardTitle>
+            <CardDescription>
+              Open a ticket with RestroNex support and follow the replies for your business.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Link
+              href="/settings/support"
+              className="text-gold-deep dark:text-gold inline-flex items-center gap-1.5 text-sm font-medium underline-offset-4 hover:underline"
+            >
+              Open support <ArrowRight className="size-4" />
             </Link>
           </CardContent>
         </Card>

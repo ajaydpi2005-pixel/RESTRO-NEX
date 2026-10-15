@@ -43,16 +43,19 @@ import { buildXlsx } from "@/modules/reports/xlsx";
 import type { ExportMeta, ReportPayload } from "@/modules/reports/types";
 import { reportHref, exportHref } from "@/modules/reports/urls";
 
-const MIGRATION = readFileSync(
-  join(process.cwd(), "supabase/migrations/20261014100000_reports.sql"),
-  "utf8",
-);
+// Phase 16 defines the report functions; Phase 17 adds the channel report.
+const MIGRATION = [
+  "supabase/migrations/20261014100000_reports.sql",
+  "supabase/migrations/20261015100000_online_ordering.sql",
+]
+  .map((file) => readFileSync(join(process.cwd(), file), "utf8"))
+  .join("\n");
 
 const TODAY = "2026-10-15";
 
 describe("registry", () => {
-  it("has 24 reports across the five groups, matching the Phase 16 spec", () => {
-    expect(REPORTS).toHaveLength(24);
+  it("has 25 reports across the five groups (Phase 16 spec plus the Phase 17 channel report)", () => {
+    expect(REPORTS).toHaveLength(25);
     expect(REPORT_GROUPS.map((g) => g.key)).toEqual([
       "sales",
       "financial",
@@ -63,7 +66,7 @@ describe("registry", () => {
     const counts = Object.fromEntries(
       REPORT_GROUPS.map((g) => [g.key, reportsInGroup(g.key).length]),
     );
-    expect(counts).toEqual({ sales: 6, financial: 5, inventory: 5, staff: 4, customer: 4 });
+    expect(counts).toEqual({ sales: 7, financial: 5, inventory: 5, staff: 4, customer: 4 });
   });
 
   it("uses unique slugs and finds each one", () => {
@@ -79,7 +82,7 @@ describe("registry", () => {
       ),
     );
     const rpcs = new Set(REPORTS.map((r) => r.rpc));
-    expect(rpcs.size).toBe(21);
+    expect(rpcs.size).toBe(22);
     for (const rpc of rpcs) expect(declared.has(rpc), rpc).toBe(true);
   });
 

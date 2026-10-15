@@ -86,3 +86,12 @@ $PSQL -f scripts/local-pg/assertions-phase15.sql
 
 echo "→ Running reports + analytics assertions (Phase 16)"
 $PSQL -f scripts/local-pg/assertions-phase16.sql
+
+echo "→ Running online ordering + QR table ordering assertions (Phase 17)"
+$PSQL -f scripts/local-pg/assertions-phase17.sql
+
+echo "→ Running external integrations framework assertions (Phase 18)"
+$PSQL -f scripts/local-pg/assertions-phase18.sql
+
+echo "→ Running Super Admin, subscriptions and entitlements assertions (Phase 19)"
+$PSQL -f scripts/local-pg/assertions-phase19.sql

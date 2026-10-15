@@ -28,6 +28,15 @@ export const serverEnvSchema = z.object({
   PAYMENT_KEY_ID: z.string().min(1).optional(),
   PAYMENT_KEY_SECRET: z.string().min(1).optional(),
   PAYMENT_WEBHOOK_SECRET: z.string().min(1).optional(),
+
+  /**
+   * Phase 18 — integration credentials are encrypted with AES-256-GCM. The value is
+   * 32 random bytes, base64-encoded. Server-only. Rotating it makes stored credentials
+   * unreadable, so re-enter them after a rotation.
+   */
+  INTEGRATION_ENCRYPTION_KEY: z.string().min(1).optional(),
+  /** Phase 18 — bearer secret for POST /api/integrations/worker. At least 32 characters. */
+  INTEGRATION_WORKER_SECRET: z.string().min(32).optional(),
 });
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;

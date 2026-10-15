@@ -24,7 +24,6 @@ const footerColumns: { heading: string; links: { label: string; href: string }[]
       { label: "Log in", href: "/login" },
       { label: "Sign up", href: "/signup" },
       { label: "Dashboard", href: "/dashboard" },
-      { label: "Super Admin", href: "/admin" },
     ],
   },
 ];

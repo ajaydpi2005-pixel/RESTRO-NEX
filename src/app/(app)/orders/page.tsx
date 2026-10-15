@@ -7,7 +7,13 @@ import { minorToDisplay } from "@/modules/menu/schemas";
 import { OrdersBusinessPicker } from "@/modules/orders/components/business-picker";
 import { resolveOrdersBusiness } from "@/modules/orders/context";
 import { loadOrders, loadPosOutlets } from "@/modules/orders/queries";
-import { ORDER_STATE_LABELS, ORDER_TYPE_LABELS, isOrderState, type OrderState, type OrderType } from "@/modules/orders/state";
+import {
+  ORDER_STATE_LABELS,
+  ORDER_TYPE_LABELS,
+  isOrderState,
+  type OrderState,
+  type OrderType,
+} from "@/modules/orders/state";
 import { cn } from "@/lib/utils";
 import { guardRedirect } from "@/lib/guarded-redirect";
 
@@ -41,12 +47,16 @@ export default async function OrdersPage({
     return (
       <div className="space-y-2">
         <h1 className="font-display text-3xl font-semibold tracking-tight">Orders</h1>
-        <p className="text-muted-foreground">You don&apos;t have permission to view orders in this business.</p>
+        <p className="text-muted-foreground">
+          You don&apos;t have permission to view orders in this business.
+        </p>
       </div>
     );
   }
 
-  const membership = abilities.userId ? await findActiveMembership(abilities.userId, business.id) : null;
+  const membership = abilities.userId
+    ? await findActiveMembership(abilities.userId, business.id)
+    : null;
   if (!membership) return await guardRedirect("/settings");
   const outlets = await loadPosOutlets(business.id, membership.role, membership.id);
 
@@ -66,9 +76,20 @@ export default async function OrdersPage({
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="space-y-1">
-          <Link href={`/pos?business=${business.id}`} className="text-sm text-muted-foreground hover:text-ink">
+          <Link
+            href={`/pos?business=${business.id}`}
+            className="text-muted-foreground hover:text-ink text-sm"
+          >
             ← Back to POS
           </Link>
+          <div className="flex gap-4 text-sm">
+            <Link
+              href={`/orders/online?business=${business.id}`}
+              className="text-gold-deep dark:text-gold font-medium underline-offset-4 hover:underline"
+            >
+              Online and QR orders →
+            </Link>
+          </div>
           <h1 className="font-display text-3xl font-semibold tracking-tight">Orders</h1>
           <p className="text-muted-foreground">
             {orders.length} {group} order{orders.length === 1 ? "" : "s"} · {business.name}
@@ -81,14 +102,16 @@ export default async function OrdersPage({
         />
       </div>
 
-      <div className="flex gap-1 rounded-lg bg-muted p-1 sm:w-fit">
+      <div className="bg-muted flex gap-1 rounded-lg p-1 sm:w-fit">
         {GROUPS.map((g) => (
           <Link
             key={g}
             href={`/orders?${qs({ group: g })}`}
             className={cn(
               "flex-1 rounded-md px-4 py-1.5 text-center text-sm font-medium capitalize transition sm:flex-none",
-              group === g ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
+              group === g
+                ? "bg-card text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground",
             )}
           >
             {g}
@@ -98,9 +121,12 @@ export default async function OrdersPage({
 
       {orders.length === 0 ? (
         <Card>
-          <CardContent className="py-12 text-center text-sm text-muted-foreground">
+          <CardContent className="text-muted-foreground py-12 text-center text-sm">
             No {group} orders{outletId ? " at this outlet" : ""} yet.{" "}
-            <Link href={`/pos?business=${business.id}`} className="text-gold-deep underline-offset-4 hover:underline">
+            <Link
+              href={`/pos?business=${business.id}`}
+              className="text-gold-deep underline-offset-4 hover:underline"
+            >
               Take one in the POS →
             </Link>
           </CardContent>
@@ -113,19 +139,19 @@ export default async function OrdersPage({
               <Link
                 key={order.id}
                 href={`/orders/${order.id}?business=${business.id}`}
-                className="grid grid-cols-[auto_1fr_auto] items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 transition hover:border-gold/60 sm:grid-cols-[4rem_6rem_1fr_auto_auto]"
+                className="border-border bg-card hover:border-gold/60 grid grid-cols-[auto_1fr_auto] items-center gap-3 rounded-xl border px-4 py-3 transition sm:grid-cols-[4rem_6rem_1fr_auto_auto]"
               >
                 <span className="text-sm font-semibold tabular-nums">#{order.orderNumber}</span>
-                <span className="hidden text-sm text-muted-foreground sm:block">
+                <span className="text-muted-foreground hidden text-sm sm:block">
                   {ORDER_TYPE_LABELS[order.orderType as OrderType] ?? order.orderType}
                   {order.tableName ? ` · ${order.tableName}` : ""}
                 </span>
                 <span className="truncate text-sm">
                   {order.itemCount} item{order.itemCount === 1 ? "" : "s"}
                   {order.customerName ? ` · ${order.customerName}` : ""}
-                  <span className="text-xs text-muted-foreground"> · {order.outletName}</span>
+                  <span className="text-muted-foreground text-xs"> · {order.outletName}</span>
                 </span>
-                <span className="hidden text-xs text-muted-foreground sm:block">
+                <span className="text-muted-foreground hidden text-xs sm:block">
                   {new Date(order.createdAt).toLocaleString("en-IN", {
                     day: "2-digit",
                     month: "short",
@@ -134,7 +160,9 @@ export default async function OrdersPage({
                   })}
                 </span>
                 <span className="flex items-center justify-end gap-3">
-                  <span className="text-sm font-semibold tabular-nums">₹{minorToDisplay(order.totalMinor)}</span>
+                  <span className="text-sm font-semibold tabular-nums">
+                    ₹{minorToDisplay(order.totalMinor)}
+                  </span>
                   {state ? (
                     <Badge className={cn("border-0 font-medium", STATUS_TONES[state])}>
                       {ORDER_STATE_LABELS[state]}
@@ -165,7 +193,9 @@ function OutletFilter({
         href={basePath}
         className={cn(
           "rounded-md border px-2.5 py-1",
-          !current ? "border-ink bg-ink text-parchment" : "border-border text-muted-foreground hover:text-ink",
+          !current
+            ? "border-ink bg-ink text-parchment"
+            : "border-border text-muted-foreground hover:text-ink",
         )}
       >
         All outlets
@@ -176,7 +206,9 @@ function OutletFilter({
           href={`${basePath}&outlet=${o.id}`}
           className={cn(
             "rounded-md border px-2.5 py-1",
-            current === o.id ? "border-ink bg-ink text-parchment" : "border-border text-muted-foreground hover:text-ink",
+            current === o.id
+              ? "border-ink bg-ink text-parchment"
+              : "border-border text-muted-foreground hover:text-ink",
           )}
         >
           {o.name}

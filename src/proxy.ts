@@ -8,6 +8,7 @@ import { NextResponse, type NextRequest } from "next/server";
  *  - refresh the Supabase session cookie on every matched request
  *  - redirect unauthenticated users away from protected routes to /login
  *  - redirect signed-in users away from the auth entry pages
+ *  - send anonymous visitors under /admin to the operator sign-in page
  *
  * Layout-level guards still re-verify the session server-side; this proxy
  * is the fast outer fence, not the only one.
@@ -28,6 +29,8 @@ const PROTECTED_PREFIXES = [
 ];
 
 const AUTH_PAGES = ["/login", "/signup"];
+
+const ADMIN_SIGN_IN = "/admin/sign-in";
 
 function matches(pathname: string, prefixes: string[]): boolean {
   return prefixes.some((p) => pathname === p || pathname.startsWith(`${p}/`));
@@ -80,6 +83,14 @@ export async function proxy(request: NextRequest) {
       contentType.startsWith("multipart/form-data") ||
       contentType.startsWith("application/x-www-form-urlencoded"));
 
+  // Super Admin: anonymous visitors go to the operator sign-in page. Signed-in
+  // non-operators are refused by the layout (404), not here, so the proxy does
+  // not reveal whether the area exists.
+  if (matches(pathname, ["/admin"]) && !matches(pathname, [ADMIN_SIGN_IN]) && !user) {
+    if (isActionLikePost) return response;
+    return NextResponse.redirect(new URL(ADMIN_SIGN_IN, request.url));
+  }
+
   if (matches(pathname, PROTECTED_PREFIXES) && !user) {
     if (isActionLikePost) return response;
     const target = new URL("/login", request.url);
@@ -107,6 +118,7 @@ export const config = {
     "/reports/:path*",
     "/settings/:path*",
     "/account/:path*",
+    "/admin/:path*",
     "/login",
     "/signup",
   ],

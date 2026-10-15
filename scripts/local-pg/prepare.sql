@@ -29,11 +29,15 @@ alter default privileges in schema public grant execute on functions to anon, au
 -- auth schema emulation -------------------------------------------------------
 create schema if not exists auth;
 
+-- Columns mirror the hosted auth.users: phone and last_sign_in_at are read by
+-- the Super Admin user list and detail RPCs.
 create table if not exists auth.users (
   id uuid primary key default gen_random_uuid(),
   email text unique,
+  phone text,
   raw_user_meta_data jsonb not null default '{}'::jsonb,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  last_sign_in_at timestamptz
 );
 
 grant usage on schema auth to anon, authenticated, service_role;

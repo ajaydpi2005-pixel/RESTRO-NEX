@@ -215,15 +215,20 @@ begin
   exception when insufficient_privilege then null;
   end;
 
-  -- (c) legitimate self-status change still works (not over-restricted)
+  -- (c) a member may still leave a business (self-deactivation works)
   update public.memberships set status = 'deactivated' where user_id = auth.uid();
   get diagnostics n = row_count;
-  if n <> 1 then raise exception 'T5 FAIL: legitimate self-status update broken'; end if;
-  update public.memberships set status = 'active' where user_id = auth.uid();
-  get diagnostics n = row_count;
-  if n <> 1 then raise exception 'T5 FAIL: could not restore membership status'; end if;
+  if n <> 1 then raise exception 'T5 FAIL: legitimate self-deactivation broken'; end if;
 
-  raise notice 'T5 DENIED: forged business_id/role blocked; legitimate status update intact';
+  -- (d) a deactivated member cannot re-activate their own membership
+  -- (Phase 19: the self-update policy only allows status = 'deactivated')
+  begin
+    update public.memberships set status = 'active' where user_id = auth.uid();
+    raise exception 'T5 FAIL: self-reactivation allowed';
+  exception when insufficient_privilege then null;
+  end;
+
+  raise notice 'T5 DENIED: forged business_id/role blocked; self-reactivation refused';
 end
 $$;
 
@@ -240,6 +245,9 @@ begin
 end
 $$;
 reset role;
+-- Fixture restore (superuser): the self-deactivation above must not leak into later tests.
+update public.memberships set status = 'active'
+where user_id = 'eeeeeeee-0000-0000-0000-000000000003' and status = 'deactivated';
 
 -- ══ TEST 6 — Direct database queries attempting cross-tenant access ──────
 \echo '── TEST 6: direct database queries (role-switch, as PostgREST would)'
